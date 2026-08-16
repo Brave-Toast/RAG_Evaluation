@@ -1,0 +1,473 @@
+[
+  {
+    "id": "1",
+    "question": "Which magazine was started first, Arthur's Magazine or First for Women?",
+    "ground_truth": "Arthur's Magazine",
+    "contexts": [
+      { "title": "Arthur's Magazine", "text": "Arthur's Magazine (1844–1846) was an American literary magazine published in Philadelphia in the 19th century." },
+      { "title": "First for Women", "text": "First for Women is a woman's magazine published by Bauer Media Group in the USA. The magazine was started in 1989." },
+      { "title": "Publishing History Quarterly", "text": "19th century literary magazines laid the groundwork for specialized modern fashion and lifestyle publications." }
+    ]
+  },
+  {
+    "id": "2",
+    "question": "Were Scott Derrickson and Rupert Wyatt both born in the same decade?",
+    "ground_truth": "No, Scott Derrickson was born in 1966 and Rupert Wyatt in 1972.",
+    "contexts": [
+      { "title": "Scott Derrickson", "text": "Scott Derrickson (born July 16, 1966) is an American director, screenwriter and producer. He directed Doctor Strange." },
+      { "title": "Rupert Wyatt", "text": "Rupert Wyatt (born 26 October 1972) is an English film director, screenwriter, and producer who directed Rise of the Planet of the Apes." },
+      { "title": "British & American Directors Registry", "text": "Modern cinema directors emerging in the late 20th century frequently crossed over between indie projects and blockbuster franchises." }
+    ]
+  },
+  {
+    "id": "3",
+    "question": "What clean energy source produces power at the Hoover Dam?",
+    "ground_truth": "Hydroelectric power",
+    "contexts": [
+      { "title": "Hoover Dam", "text": "Hoover Dam is a concrete black-canyon arch-gravity dam on the Colorado River, constructing Lake Mead. Its plant generates massive hydroelectric power." },
+      { "title": "Clean Energy Overview", "text": "Hydroelectric energy utilizes flowing water to spin turbines, producing renewable zero-emission electricity." },
+      { "title": "Renewable Power Infrastructure", "text": "Large scale dam reservoirs store kinetic energy in liquid mass to provide grid stabilization during peak energy consumption." }
+    ]
+  },
+  {
+    "id": "4",
+    "question": "What government position did the director of The Great Dictator hold later in life?",
+    "ground_truth": "Charlie Chaplin held no official government position, but was appointed a Knight Commander of the Order of the British Empire (KBE).",
+    "contexts": [
+      { "title": "The Great Dictator", "text": "The Great Dictator is a 1940 American political satire comedy-drama film written, directed, produced, scored by, and starring Charlie Chaplin." },
+      { "title": "Charlie Chaplin", "text": "Charlie Chaplin was an English comic actor, filmmaker, and composer who rose to fame during the era of silent film. In 1975, Chaplin was knighted by Queen Elizabeth II." }
+    ]
+  },
+  {
+    "id": "5",
+    "question": "Are the university of Notre Dame and Indiana University located in the same state?",
+    "ground_truth": "Yes, both are located in Indiana.",
+    "contexts": [
+      { "title": "University of Notre Dame", "text": "The University of Notre Dame du Lac is a private Catholic research university in Notre Dame, Indiana, north of South Bend." },
+      { "title": "Indiana University", "text": "Indiana University is a public research university system with its flagship campus in Bloomington, Indiana." }
+    ]
+  },
+  {
+    "id": "6",
+    "question": "Which country is home to the capital city where the 1992 Summer Olympics were held?",
+    "ground_truth": "Spain",
+    "contexts": [
+      { "title": "1992 Summer Olympics", "text": "The 1992 Summer Olympics were an international multi-sport event celebrated in Barcelona, Catalonia, Spain." },
+      { "title": "Barcelona", "text": "Barcelona is the capital and largest city of Catalonia and the second most populous municipality in Spain." }
+    ]
+  },
+  {
+    "id": "7",
+    "question": "Which animated feature film won the first Academy Award for Best Animated Feature?",
+    "ground_truth": "Shrek",
+    "contexts": [
+      { "title": "Academy Award for Best Animated Feature", "text": "The Academy Award for Best Animated Feature was first awarded in 2002 for animated films released in 2001. The inaugural recipient was Shrek." },
+      { "title": "Shrek", "text": "Shrek is a 2001 American computer-animated fantasy comedy film loosely based on the 1990 fairytale picture book of the same name by William Steig." }
+    ]
+  },
+  {
+    "id": "8",
+    "question": "What ocean surrounds the island nation where reggae music originated?",
+    "ground_truth": "Caribbean Sea (Atlantic Ocean)",
+    "contexts": [
+      { "title": "Reggae", "text": "Reggae is a music genre that originated in Jamaica in the late 1960s." },
+      { "title": "Jamaica", "text": "Jamaica is an island country situated in the Caribbean Sea, spanning 10,990 square kilometres in area." }
+    ]
+  },
+  {
+    "id": "9",
+    "question": "Who was the president of the United States when NASA was founded?",
+    "ground_truth": "Dwight D. Eisenhower",
+    "contexts": [
+      { "title": "NASA", "text": "The National Aeronautics and Space Administration (NASA) was established in 1958 by President Dwight D. Eisenhower." },
+      { "title": "National Aeronautics and Space Act", "text": "Signed on July 29, 1958, the act created NASA to oversee US space exploration efforts." }
+    ]
+  },
+  {
+    "id": "10",
+    "question": "Which chemical element has the highest thermal conductivity of all metals?",
+    "ground_truth": "Silver",
+    "contexts": [
+      { "title": "Silver", "text": "Silver is a chemical element with symbol Ag and atomic number 47. It possesses the highest electrical and thermal conductivity of any metal." },
+      { "title": "Thermal Conductivity", "text": "Thermal conductivity measures a material's capacity to conduct heat. Silver leads all elemental metals followed by copper and gold." }
+    ]
+  },
+  {
+    "id": "11",
+    "question": "In what mountain range is Mount Everest located?",
+    "ground_truth": "Himalayas",
+    "contexts": [
+      { "title": "Mount Everest", "text": "Mount Everest is Earth's highest mountain above sea level, located in the Mahalangur Himal sub-range of the Himalayas." },
+      { "title": "Himalayas", "text": "The Himalayas is a mountain range in Asia separating the plains of the Indian subcontinent from the Tibetan Plateau." }
+    ]
+  },
+  {
+    "id": "12",
+    "question": "Which author created the detective character Hercule Poirot?",
+    "ground_truth": "Agatha Christie",
+    "contexts": [
+      { "title": "Hercule Poirot", "text": "Hercule Poirot is a fictional Belgian detective created by British writer Agatha Christie." },
+      { "title": "Agatha Christie", "text": "Dame Agatha Christie was an English writer known for her 66 detective novels and 14 short story collections." }
+    ]
+  },
+  {
+    "id": "13",
+    "question": "Which architectural style is characterized by pointed arches and ribbed vaults?",
+    "ground_truth": "Gothic architecture",
+    "contexts": [
+      { "title": "Gothic Architecture", "text": "Gothic architecture is an architectural style that flourished in Europe during the High and Late Middle Ages. Its characteristic features include pointed arches, ribbed vaults, and flying buttresses." },
+      { "title": "Notre-Dame de Paris", "text": "Notre-Dame de Paris is a medieval Catholic cathedral widely considered one of the finest examples of French Gothic architecture." }
+    ]
+  },
+  {
+    "id": "14",
+    "question": "What programming language was developed by James Gosling at Sun Microsystems?",
+    "ground_truth": "Java",
+    "contexts": [
+      { "title": "Java (programming language)", "text": "Java was originally developed by James Gosling at Sun Microsystems and released in 1995 as a core component of Sun's Java platform." },
+      { "title": "James Gosling", "text": "James Gosling is a Canadian computer scientist, best known as the founder and lead designer of the Java programming language." }
+    ]
+  },
+  {
+    "id": "15",
+    "question": "Which planet in the solar system has the most moon satellites?",
+    "ground_truth": "Saturn",
+    "contexts": [
+      { "title": "Moons of Saturn", "text": "Saturn has 146 confirmed moons with official orbits, making it the planet with the highest number of moons in the solar system." },
+      { "title": "Moons of Jupiter", "text": "Jupiter has 95 officially recognized moons, previously holding the title before recent discoveries around Saturn." }
+    ]
+  },
+  {
+    "id": "16",
+    "question": "What is the capital city of Australia?",
+    "ground_truth": "Canberra",
+    "contexts": [
+      { "title": "Canberra", "text": "Canberra is the capital city of Australia. Founded following the compromise between rivals Sydney and Melbourne in 1908." },
+      { "title": "Sydney", "text": "Sydney is the state capital of New South Wales and the most populous city in Australia, though not the national capital." }
+    ]
+  },
+  {
+    "id": "17",
+    "question": "Which scientist proposed the special theory of relativity in 1905?",
+    "ground_truth": "Albert Einstein",
+    "contexts": [
+      { "title": "Special Relativity", "text": "Special relativity was originally proposed by Albert Einstein in his 1905 paper 'On the Electrodynamics of Moving Bodies'." },
+      { "title": "Albert Einstein", "text": "Albert Einstein was a German-born theoretical physicist who developed the theory of relativity, one of the two pillars of modern physics." }
+    ]
+  },
+  {
+    "id": "18",
+    "question": "What is the primary currency used in Japan?",
+    "ground_truth": "Japanese yen (JPY)",
+    "contexts": [
+      { "title": "Japanese Yen", "text": "The yen is the official currency of Japan. It is the third most traded currency in the foreign exchange market." },
+      { "title": "Bank of Japan", "text": "The Bank of Japan is the central bank of Japan, responsible for issuing yen currency banknotes." }
+    ]
+  },
+  {
+    "id": "19",
+    "question": "Which organ in the human body produces insulin?",
+    "ground_truth": "Pancreas",
+    "contexts": [
+      { "title": "Pancreas", "text": "The pancreas is an organ of the digestive system and endocrine system of vertebrates. Beta cells in islets of Langerhans produce insulin." },
+      { "title": "Insulin", "text": "Insulin is a peptide hormone produced by beta cells of the pancreatic islets that regulates carbohydrate metabolism." }
+    ]
+  },
+  {
+    "id": "20",
+    "question": "Who painted the mural The Last Supper in Milan?",
+    "ground_truth": "Leonardo da Vinci",
+    "contexts": [
+      { "title": "The Last Supper (Leonardo)", "text": "The Last Supper is a late 15th-century mural painting by Leonardo da Vinci housed by the refectory of the Convent of Santa Maria delle Grazie in Milan." },
+      { "title": "Leonardo da Vinci", "text": "Leonardo da Vinci was an Italian polymath of the High Renaissance who painted iconic works including Mona Lisa and The Last Supper." }
+    ]
+  },
+  {
+    "id": "21",
+    "question": "Which deep sea trench is the deepest point on Earth?",
+    "ground_truth": "Mariana Trench (Challenger Deep)",
+    "contexts": [
+      { "title": "Mariana Trench", "text": "The Mariana Trench is located in the western Pacific Ocean. The deepest known point on Earth, Challenger Deep, lies at its southern end." },
+      { "title": "Challenger Deep", "text": "Challenger Deep is the deepest known point of the Earth's seabed hydrosphere, measured at approximately 10,994 meters depth." }
+    ]
+  },
+  {
+    "id": "22",
+    "question": "What year did the Western Roman Empire fall?",
+    "ground_truth": "476 AD",
+    "contexts": [
+      { "title": "Fall of the Western Roman Empire", "text": "The Fall of the Western Roman Empire occurred in 476 AD when Romulus Augustulus was deposed by Odoacer." },
+      { "title": "Odoacer", "text": "Odoacer became the first King of Italy in 476 AD, marking the traditional end of the Western Roman Empire." }
+    ]
+  },
+  {
+    "id": "23",
+    "question": "What instrument measures atmospheric air pressure?",
+    "ground_truth": "Barometer",
+    "contexts": [
+      { "title": "Barometer", "text": "A barometer is a scientific instrument used to measure atmospheric pressure in a given environment." },
+      { "title": "Atmospheric Pressure", "text": "Atmospheric pressure is caused by the gravitational attraction of the planet on the atmospheric gases above the surface." }
+    ]
+  },
+  {
+    "id": "24",
+    "question": "Which company developed the Android operating system before being acquired by Google?",
+    "ground_truth": "Android Inc.",
+    "contexts": [
+      { "title": "Android (operating system)", "text": "Android Inc. was founded in Palo Alto, California in October 2003 by Andy Rubin, Rich Miner, Nick Sears, and Chris White. Google acquired it in 2005." },
+      { "title": "Andy Rubin", "text": "Andy Rubin co-founded Android Inc. in 2003 to develop an advanced operating system for digital cameras and smart phones." }
+    ]
+  },
+  {
+    "id": "25",
+    "question": "What is the hardest naturally occurring mineral on Earth?",
+    "ground_truth": "Diamond",
+    "contexts": [
+      { "title": "Diamond", "text": "Diamond is a solid form of the element carbon with its atoms arranged in a crystal structure called diamond cubic. It ranks 10 on the Mohs scale." },
+      { "title": "Mohs Scale of Mineral Hardness", "text": "The Mohs scale characterizes scratch resistance of various minerals through ability of harder material to scratch softer material." }
+    ]
+  },
+  {
+    "id": "26",
+    "question": "Which treaty signed in 1919 officially ended World War I?",
+    "ground_truth": "Treaty of Versailles",
+    "contexts": [
+      { "title": "Treaty of Versailles", "text": "The Treaty of Versailles was the most important of the peace treaties that brought World War I to an end, signed on June 28, 1919." },
+      { "title": "Paris Peace Conference", "text": "The Paris Peace Conference of 1919 set peace terms for the defeated Central Powers following the Armistice of 1918." }
+    ]
+  },
+  {
+    "id": "27",
+    "question": "Which vessel brought the Pilgrims to North America in 1620?",
+    "ground_truth": "Mayflower",
+    "contexts": [
+      { "title": "Mayflower", "text": "The Mayflower was an English ship that transported a group of English families, known today as the Pilgrims, from England to the New World in 1620." },
+      { "title": "Plymouth Colony", "text": "Plymouth Colony was an English colonial venture in North America from 1620 to 1691 at a location previously surveyed by Captain John Smith." }
+    ]
+  },
+  {
+    "id": "28",
+    "question": "What is the speed of light in a vacuum in meters per second?",
+    "ground_truth": "299,792,458 m/s",
+    "contexts": [
+      { "title": "Speed of Light", "text": "The speed of light in vacuum, denoted c, is an absolute physical constant equal to exactly 299,792,458 meters per second." },
+      { "title": "Meter", "text": "The meter is defined as the distance traveled by light in a vacuum during a time interval of 1/299,792,458 of a second." }
+    ]
+  },
+  {
+    "id": "29",
+    "question": "Who wrote the play Romeo and Juliet?",
+    "ground_truth": "William Shakespeare",
+    "contexts": [
+      { "title": "Romeo and Juliet", "text": "Romeo and Juliet is a tragedy written by William Shakespeare early in his career about two young Italian star-crossed lovers." },
+      { "title": "William Shakespeare", "text": "William Shakespeare was an English playwright, poet, and actor, widely regarded as the greatest writer in the English language." }
+    ]
+  },
+  {
+    "id": "30",
+    "question": "Which African lake is the chief reservoir of the River Nile?",
+    "ground_truth": "Lake Victoria",
+    "contexts": [
+      { "title": "Lake Victoria", "text": "Lake Victoria is one of the African Great Lakes and the continent's largest lake by area. It serves as the primary reservoir of the White Nile." },
+      { "title": "Nile River", "text": "The Nile is a major north-flowing river in northeastern Africa, traditionally considered the longest river in the world." }
+    ]
+  },
+  {
+    "id": "31",
+    "question": "What layer of Earth's atmosphere contains the ozone layer?",
+    "ground_truth": "Stratosphere",
+    "contexts": [
+      { "title": "Ozone Layer", "text": "The ozone layer is a region of Earth's stratosphere that absorbs most of the Sun's ultraviolet radiation." },
+      { "title": "Stratosphere", "text": "The stratosphere is the second major layer of Earth's atmosphere, located above the troposphere and below the mesosphere." }
+    ]
+  },
+  {
+    "id": "32",
+    "question": "Which element has the atomic number 1 on the periodic table?",
+    "ground_truth": "Hydrogen",
+    "contexts": [
+      { "title": "Hydrogen", "text": "Hydrogen is the chemical element with atomic number 1 and symbol H. It is the lightest element in the periodic table." },
+      { "title": "Periodic Table", "text": "The periodic table arranges chemical elements by atomic number, electron configuration, and recurring chemical properties." }
+    ]
+  },
+  {
+    "id": "33",
+    "question": "What building is the official residence and workplace of the President of France?",
+    "ground_truth": "Élysée Palace (Palais de l'Élysée)",
+    "contexts": [
+      { "title": "Élysée Palace", "text": "The Élysée Palace is the official residence of the President of the French Republic in Paris." },
+      { "title": "President of France", "text": "The President of the French Republic is the head of state of France and commander-in-chief of the French Armed Forces." }
+    ]
+  },
+  {
+    "id": "34",
+    "question": "Which British mathematician is known as the father of modern computer science and artificial intelligence?",
+    "ground_truth": "Alan Turing",
+    "contexts": [
+      { "title": "Alan Turing", "text": "Alan Turing was an English mathematician, computer scientist, logician, cryptanalyst, philosopher, and theoretical biologist." },
+      { "title": "Turing Machine", "text": "The Turing machine was formulated by Alan Turing in 1936 to formalize the concepts of algorithm and computation." }
+    ]
+  },
+  {
+    "id": "35",
+    "question": "Which organelle is known as the powerhouse of the cell?",
+    "ground_truth": "Mitochondria",
+    "contexts": [
+      { "title": "Mitochondrion", "text": "A mitochondrion is a double-membrane-bound organelle found in most eukaryotic organisms. Mitochondria generate most of the cell's ATP." },
+      { "title": "Cellular Respiration", "text": "Cellular respiration is a set of metabolic reactions that take place in organisms to convert biochemical energy into ATP." }
+    ]
+  },
+  {
+    "id": "36",
+    "question": "What is the longest river system in South America?",
+    "ground_truth": "Amazon River",
+    "contexts": [
+      { "title": "Amazon River", "text": "The Amazon River in South America is the largest river by discharge volume of water in the world, and by some definitions the longest." },
+      { "title": "Amazon Basin", "text": "The Amazon Basin covers approximately 7,000,000 square kilometers across nine nations in South America." }
+    ]
+  },
+  {
+    "id": "37",
+    "question": "Who invented the telephone and patented it in 1876?",
+    "ground_truth": "Alexander Graham Bell",
+    "contexts": [
+      { "title": "Alexander Graham Bell", "text": "Alexander Graham Bell was a Scottish-born inventor, scientist and engineer who is credited with patenting the first practical telephone in 1876." },
+      { "title": "Telephone History", "text": "The development of the electric telegraph laid the groundwork for telephonic acoustic voice transmission." }
+    ]
+  },
+  {
+    "id": "38",
+    "question": "Which planet is known as the Red Planet due to iron oxide on its surface?",
+    "ground_truth": "Mars",
+    "contexts": [
+      { "title": "Mars", "text": "Mars is the fourth planet from the Sun. It carries the nickname 'Red Planet' because iron oxide prevalent on its surface gives it a reddish appearance." },
+      { "title": "Olympus Mons", "text": "Olympus Mons on Mars is the largest volcano and highest mountain peak in the Solar System." }
+    ]
+  },
+  {
+    "id": "39",
+    "question": "What is the capital city of Canada?",
+    "ground_truth": "Ottawa",
+    "contexts": [
+      { "title": "Ottawa", "text": "Ottawa is the capital city of Canada, located in the southern portion of the province of Ontario at the confluence of the Ottawa River." },
+      { "title": "Toronto", "text": "Toronto is the most populous city in Canada and the provincial capital of Ontario, though Ottawa is the national capital." }
+    ]
+  },
+  {
+    "id": "40",
+    "question": "Which Renaissance artist sculpted the statue of David in Florence?",
+    "ground_truth": "Michelangelo",
+    "contexts": [
+      { "title": "David (Michelangelo)", "text": "David is a masterpiece of Renaissance sculpture created in marble between 1501 and 1504 by the Italian artist Michelangelo." },
+      { "title": "Michelangelo", "text": "Michelangelo Buonarroti was an Italian sculptor, painter, architect, and poet of the High Renaissance born in the Republic of Florence." }
+    ]
+  },
+  {
+    "id": "41",
+    "question": "What is the SI unit of electric current?",
+    "ground_truth": "Ampere (Amp)",
+    "contexts": [
+      { "title": "Ampere", "text": "The ampere, often shortened to 'amp', is the base unit of electric current in the International System of Units (SI)." },
+      { "title": "Electric Current", "text": "Electric current is the net rate of flow of electric charge through a surface or control volume." }
+    ]
+  },
+  {
+    "id": "42",
+    "question": "Which sea lies between Europe to the north and Africa to the south?",
+    "ground_truth": "Mediterranean Sea",
+    "contexts": [
+      { "title": "Mediterranean Sea", "text": "The Mediterranean Sea is a sea connected to the Atlantic Ocean, surrounded by the Mediterranean Basin and bounded by Europe, Asia, and Africa." },
+      { "title": "Strait of Gibraltar", "text": "The Strait of Gibraltar connects the Atlantic Ocean to the Mediterranean Sea and separates Spain in Europe from Morocco in Africa." }
+    ]
+  },
+  {
+    "id": "43",
+    "question": "What famous document was signed on July 4, 1776 in Philadelphia?",
+    "ground_truth": "United States Declaration of Independence",
+    "contexts": [
+      { "title": "United States Declaration of Independence", "text": "The United States Declaration of Independence was adopted by the Second Continental Congress meeting at Independence Hall in Philadelphia on July 4, 1776." },
+      { "title": "Independence Hall", "text": "Independence Hall in Philadelphia is where both the Declaration of Independence and United States Constitution were debated and adopted." }
+    ]
+  },
+  {
+    "id": "44",
+    "question": "Which gas makes up approximately 78 percent of Earth's atmosphere?",
+    "ground_truth": "Nitrogen",
+    "contexts": [
+      { "title": "Atmosphere of Earth", "text": "Earth's atmosphere is composed of nitrogen (78.08%), oxygen (20.95%), argon (0.93%), and trace gases." },
+      { "title": "Nitrogen", "text": "Nitrogen is a chemical element with symbol N and atomic number 7. It is a colorless, odorless diatomic gas at standard conditions." }
+    ]
+  },
+  {
+    "id": "45",
+    "question": "Who was the prime minister of Great Britain during most of World War II?",
+    "ground_truth": "Winston Churchill",
+    "contexts": [
+      { "title": "Winston Churchill", "text": "Sir Winston Churchill was Prime Minister of the United Kingdom from 1940 to 1945 during the Second World War." },
+      { "title": "Battle of Britain", "text": "The Battle of Britain was a military campaign of the Second World War, in which the Royal Air Force defended the United Kingdom against Nazi Germany." }
+    ]
+  },
+  {
+    "id": "46",
+    "question": "Which novel by Herman Melville features the pursuit of a giant white whale?",
+    "ground_truth": "Moby-Dick",
+    "contexts": [
+      { "title": "Moby-Dick", "text": "Moby-Dick; or, The Whale is an 1851 novel by American writer Herman Melville detailing Sailor Ishmael's narrative of Captain Ahab's obsessive quest." },
+      { "title": "Herman Melville", "text": "Herman Melville was an American novelist, short story writer, and poet of the American Renaissance period." }
+    ]
+  },
+  {
+    "id": "47",
+    "question": "What is the main functional unit of the human kidney?",
+    "ground_truth": "Nephron",
+    "contexts": [
+      { "title": "Nephron", "text": "The nephron is the minute or microscopic structural and functional unit of the kidney that produces urine in the process of removing waste." },
+      { "title": "Kidney", "text": "The kidneys are two reddish-brown bean-shaped organs found in vertebrates that filter blood to extract wastes." }
+    ]
+  },
+  {
+    "id": "48",
+    "question": "Which country is the largest in land area in South America?",
+    "ground_truth": "Brazil",
+    "contexts": [
+      { "title": "Brazil", "text": "Brazil is the largest country in South America and Latin America, covering an area of 8.5 million square kilometers." },
+      { "title": "Geography of South America", "text": "South America comprises twelve sovereign states, of which Brazil accounts for nearly half of the landmass." }
+    ]
+  },
+  {
+    "id": "49",
+    "question": "Which element was discovered by Marie and Pierre Curie and named after Marie's homeland?",
+    "ground_truth": "Polonium",
+    "contexts": [
+      { "title": "Polonium", "text": "Polonium is a chemical element discovered in 1898 by Marie and Pierre Curie. It was named after Poland, Marie Curie's native land." },
+      { "title": "Marie Curie", "text": "Marie Curie was a Polish and naturalized-French physicist and chemist who conducted pioneering research on radioactivity." }
+    ]
+  },
+  {
+    "id": "50",
+    "question": "What is the smallest country in the world by both area and population?",
+    "ground_truth": "Vatican City",
+    "contexts": [
+      { "title": "Vatican City", "text": "Vatican City is an independent city-state enclaved within Rome, Italy. It is the smallest state in the world by both area (0.49 sq km) and population." },
+      { "title": "Holy See", "text": "The Holy See is the jurisdiction of the Bishop of Rome, known as the Pope, which includes the sovereign city-state of Vatican City." }
+    ]
+  },
+  {
+    "id": "51",
+    "question": "Which framework introduced Transformer neural network architectures in the 2017 paper Attention Is All You Need?",
+    "ground_truth": "Transformer architecture (Vaswani et al. / Google Brain & Google Research)",
+    "contexts": [
+      { "title": "Attention Is All You Need", "text": "Attention Is All You Need is a landmark 2017 research paper by Google researchers that introduced the Transformer deep learning architecture." },
+      { "title": "Transformer (deep learning architecture)", "text": "The Transformer architecture relies entirely on self-attention mechanisms to compute representations of input sequences without recurrent neural networks." }
+    ]
+  },
+  {
+    "id": "52",
+    "question": "What metric evaluates the proportion of retrieved documents that are relevant to a user query?",
+    "ground_truth": "Precision (or Retrieval Precision)",
+    "contexts": [
+      { "title": "Precision and Recall", "text": "In information retrieval, precision is the fraction of retrieved documents that are relevant to the query, whereas recall is the fraction of relevant documents retrieved." },
+      { "title": "Information Retrieval Metrics", "text": "Standard evaluation metrics for ranking and document retrieval systems include Precision@K, Recall@K, Mean Reciprocal Rank (MRR), and Normalized Discounted Cumulative Gain (NDCG)." }
+    ]
+  }
+]

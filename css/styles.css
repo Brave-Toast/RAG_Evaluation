@@ -1,0 +1,35 @@
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Context & Diff Highlighting */
+.diff-added {
+    background-color: rgba(239, 68, 68, 0.15);
+    border-left: 3px solid #ef4444;
+}
+.diff-baseline {
+    background-color: rgba(16, 185, 129, 0.15);
+    border-left: 3px solid #10b981;
+}
+
+/* Custom Animation Utilities */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
