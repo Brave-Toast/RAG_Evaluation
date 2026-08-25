@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse
 app = FastAPI(
     title="Modular RAG Evaluation & Perturbation Backend API",
     description="Provides dense vector embeddings, ChromaDB retrieval (Similarity/MMR), local Ollama LLM integration, and granular pipeline error telemetry.",
-    version="2.0.0"
+    version="2.1.0"
 )
 
 # Enable CORS for local dashboard development
@@ -48,30 +48,54 @@ if FRONTEND_DIR.exists():
     app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
     app.mount("/css", StaticFiles(directory=str(FRONTEND_DIR / "css")), name="css")
 
-# SentenceTransformer model loader
-embed_model = None
+# SentenceTransformer model registry & loader
+EMBEDDING_MODELS: Dict[str, Any] = {}
+
+def get_sentence_transformer(model_name: str = "sentence-transformers/all-mpnet-base-v2"):
+    """Loads or retrieves cached SentenceTransformer model instance."""
+    normalized_name = model_name.replace("huggingface/", "").strip()
+    if normalized_name in EMBEDDING_MODELS:
+        return EMBEDDING_MODELS[normalized_name]
+    
+    try:
+        from sentence_transformers import SentenceTransformer
+        print(f"Loading SentenceTransformer model '{normalized_name}'...")
+        model = SentenceTransformer(normalized_name)
+        EMBEDDING_MODELS[normalized_name] = model
+        print(f"SentenceTransformer '{normalized_name}' loaded successfully.")
+        return model
+    except Exception as e:
+        print(f"Notice: Could not load SentenceTransformer '{normalized_name}': {e}. Fallback will be used.")
+        return None
+
+# Preload default embedding model on startup
 try:
-    from sentence_transformers import SentenceTransformer
-    print("Loading SentenceTransformer model 'all-MiniLM-L6-v2'...")
-    embed_model = SentenceTransformer('all-MiniLM-L6-v2')
-    print("SentenceTransformer model loaded successfully.")
-except Exception as e:
-    print(f"SentenceTransformers load notice: {e}. Dense vector calculations will use fallback encoder.")
+    get_sentence_transformer("sentence-transformers/all-mpnet-base-v2")
+except Exception:
+    pass
 
 # ChromaDB / LangChain integration availability
 CHROMA_AVAILABLE = False
 try:
     import uuid
-    from langchain_community.vectorstores import Chroma
-    from langchain_core.documents import Document
-    CHROMA_AVAILABLE = True
+    try:
+        from langchain_chroma import Chroma
+        from langchain_core.documents import Document
+        CHROMA_AVAILABLE = True
+    except ImportError:
+        from langchain_community.vectorstores import Chroma
+        from langchain_core.documents import Document
+        CHROMA_AVAILABLE = True
     print("ChromaDB & LangChain vectorstore available.")
 except Exception as e:
     print(f"ChromaDB/LangChain import notice: {e}. Custom dense distance vector retrieval will be used.")
 
+
 class ContextDoc(BaseModel):
     title: str
     text: str
+    score: Optional[float] = None
+
 
 class EvaluationRequest(BaseModel):
     question_id: Optional[str] = None
@@ -81,11 +105,19 @@ class EvaluationRequest(BaseModel):
     contexts: List[ContextDoc]
     perturbation_type: str = "spelling"  # "spelling", "rephrase", "conflict"
     typo_rate: float = 0.25
-    embedding_provider: str = "ollama/nomic-embed-text"
+    embedding_provider: str = "sentence-transformers/all-mpnet-base-v2"
     search_type: str = "similarity"  # "similarity" or "mmr"
     top_k: int = 2
-    llm_model: str = "ollama/llama3"  # "ollama/llama3", "ollama/mistral", "gemini-3-flash-preview", "synthetic-evaluator"
+    llm_model: str = "ollama/qwen3.5:9b"  # "ollama/qwen3.5:9b", "ollama/llama3", "ollama/mistral", "gemini-3-flash-preview", "synthetic-evaluator"
     gemini_api_key: Optional[str] = None
+
+
+class IngestRequest(BaseModel):
+    num_rows: int = 50
+    embedding_model: str = "sentence-transformers/all-mpnet-base-v2"
+    chunk_size: int = 200
+    chunk_overlap: int = 50
+
 
 class MetricTelemetry(BaseModel):
     query_embedding_shift: float
@@ -100,6 +132,7 @@ class MetricTelemetry(BaseModel):
     status_text: str
     status_desc: str
 
+
 class EvaluationResponse(BaseModel):
     baseline_query: str
     perturbed_query: str
@@ -111,25 +144,28 @@ class EvaluationResponse(BaseModel):
     metrics: MetricTelemetry
     warning: Optional[str] = None
 
+
 DATASET_PATH = pathlib.Path(__file__).parent / "hotpotqa_dataset.json"
 
+
 def load_hotpotqa_dataset() -> List[Dict[str, Any]]:
-    """Loads 50+ benchmark questions from hotpotqa_dataset.json."""
+    """Loads benchmark questions from hotpotqa_dataset.json."""
     if DATASET_PATH.exists():
         with open(DATASET_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
-def compute_dense_embedding(text: str, provider: str = "ollama/nomic-embed-text") -> np.ndarray:
+
+def compute_dense_embedding(text: str, provider: str = "sentence-transformers/all-mpnet-base-v2") -> np.ndarray:
     """Computes a dense vector embedding using Ollama, SentenceTransformers, or fallback encoder."""
     if not text or not text.strip():
-        return np.zeros((384,), dtype=np.float32)
+        return np.zeros((768 if "mpnet" in provider else 384,), dtype=np.float32)
     
     # 1. Ollama local embeddings
     if provider and provider.startswith("ollama/"):
         model_name = provider.replace("ollama/", "")
         try:
-            with httpx.Client(timeout=3.0) as client:
+            with httpx.Client(timeout=5.0) as client:
                 res = client.post("http://localhost:11434/api/embeddings", json={"model": model_name, "prompt": text})
                 if res.status_code == 200:
                     emb = res.json().get("embedding")
@@ -139,20 +175,32 @@ def compute_dense_embedding(text: str, provider: str = "ollama/nomic-embed-text"
             pass  # Fallback to SentenceTransformers
             
     # 2. SentenceTransformer local embeddings
-    if embed_model is not None:
-        emb = embed_model.encode(text)
-        return np.array(emb, dtype=np.float32)
-    else:
-        # Fallback hash-based pseudo-embedding
-        vec = np.zeros((384,), dtype=np.float32)
-        words = text.lower().split()
-        for w in words:
-            idx = hash(w) % 384
-            vec[idx] += 1.0
-        norm = np.linalg.norm(vec)
-        return vec / norm if norm > 0 else vec
+    model_key = provider.replace("huggingface/", "")
+    st_model = get_sentence_transformer(model_key)
+    if st_model is None and "all-mpnet-base-v2" not in model_key:
+        st_model = get_sentence_transformer("all-MiniLM-L6-v2")
+    if st_model is None and "all-mpnet-base-v2" in model_key:
+        st_model = get_sentence_transformer("sentence-transformers/all-mpnet-base-v2")
+        
+    if st_model is not None:
+        try:
+            emb = st_model.encode(text)
+            return np.array(emb, dtype=np.float32)
+        except Exception as e:
+            print(f"SentenceTransformer encode notice: {e}")
 
-def compute_dense_cosine_similarity(text1: str, text2: str, provider: str = "ollama/nomic-embed-text") -> float:
+    # 3. Fallback hash-based pseudo-embedding (deterministic vector generation)
+    dim = 768 if "mpnet" in provider else 384
+    vec = np.zeros((dim,), dtype=np.float32)
+    words = text.lower().split()
+    for w in words:
+        idx = hash(w) % dim
+        vec[idx] += 1.0
+    norm = np.linalg.norm(vec)
+    return vec / norm if norm > 0 else vec
+
+
+def compute_dense_cosine_similarity(text1: str, text2: str, provider: str = "sentence-transformers/all-mpnet-base-v2") -> float:
     """Calculates CosineSim(E(text1), E(text2))."""
     if not text1 or not text2:
         return 0.0
@@ -167,6 +215,7 @@ def compute_dense_cosine_similarity(text1: str, text2: str, provider: str = "oll
     sim = float(np.dot(vec1, vec2) / (norm1 * norm2))
     return float(np.clip(sim, 0.0, 1.0))
 
+
 def compute_jaccard_overlap(docs1: List[ContextDoc], docs2: List[ContextDoc]) -> float:
     """Calculates Top-K Jaccard overlap between retrieved document sets."""
     set1 = set(d.title for d in docs1)
@@ -177,57 +226,75 @@ def compute_jaccard_overlap(docs1: List[ContextDoc], docs2: List[ContextDoc]) ->
         return 1.0
     return float(len(intersection) / len(union))
 
-def perform_vector_retrieval(docs: List[ContextDoc], query: str, search_type: str = "similarity", top_k: int = 2) -> List[ContextDoc]:
+
+def perform_vector_retrieval(
+    docs: List[ContextDoc], 
+    query: str, 
+    search_type: str = "similarity", 
+    top_k: int = 2,
+    embedding_provider: str = "sentence-transformers/all-mpnet-base-v2"
+) -> List[ContextDoc]:
     """
     Executes True Vector Retrieval using ChromaDB and LangChain embeddings,
-    supporting standard Similarity Search and Maximal Marginal Relevance (MMR).
+    supporting similarity_search_with_relevance_scores and Maximal Marginal Relevance (MMR).
+    Returns retrieved ContextDoc items with their calculated relevance/confidence scores.
     """
     if not docs:
         return []
     
+    k_val = min(top_k, len(docs))
+    
     if CHROMA_AVAILABLE:
         try:
-            class STEmbeddings:
+            class CustomDenseEmbeddings:
                 def embed_documents(self, texts: List[str]) -> List[List[float]]:
-                    return [compute_dense_embedding(t).tolist() for t in texts]
+                    return [compute_dense_embedding(t, embedding_provider).tolist() for t in texts]
                 def embed_query(self, text: str) -> List[float]:
-                    return compute_dense_embedding(text).tolist()
+                    return compute_dense_embedding(text, embedding_provider).tolist()
             
             lc_docs = [Document(page_content=d.text, metadata={"title": d.title, "index": idx}) for idx, d in enumerate(docs)]
-            db = Chroma.from_documents(lc_docs, STEmbeddings())
-            
-            if search_type.lower() == "mmr":
-                retrieved_lc = db.max_marginal_relevance_search(query, k=min(top_k, len(docs)), fetch_k=min(len(docs), 10))
-            else:
-                retrieved_lc = db.similarity_search(query, k=min(top_k, len(docs)))
+            db = Chroma.from_documents(lc_docs, CustomDenseEmbeddings())
             
             result = []
-            for doc in retrieved_lc:
-                title = doc.metadata.get("title", "Untitled")
-                result.append(ContextDoc(title=title, text=doc.page_content))
-            return result
+            if search_type.lower() == "mmr":
+                retrieved_lc = db.max_marginal_relevance_search(query, k=k_val, fetch_k=min(len(docs), 10))
+                for doc in retrieved_lc:
+                    title = doc.metadata.get("title", "Untitled")
+                    sim_score = compute_dense_cosine_similarity(query, f"{title} {doc.page_content}", provider=embedding_provider)
+                    result.append(ContextDoc(title=title, text=doc.page_content, score=round(float(sim_score), 4)))
+            else:
+                # Use similarity_search_with_relevance_scores
+                scored_lc = db.similarity_search_with_relevance_scores(query, k=k_val)
+                for doc, score in scored_lc:
+                    title = doc.metadata.get("title", "Untitled")
+                    score_val = float(score) if score is not None else compute_dense_cosine_similarity(query, f"{title} {doc.page_content}", provider=embedding_provider)
+                    # Normalize relevance score within [0, 1] range
+                    score_val = max(0.0, min(1.0, score_val))
+                    result.append(ContextDoc(title=title, text=doc.page_content, score=round(score_val, 4)))
+                    
+            if result:
+                return result
         except Exception as e:
             print(f"ChromaDB retrieval fallback notice: {e}")
     
     # Dense vector distance fallback implementation
     scored = []
     for d in docs:
-        sim = compute_dense_cosine_similarity(query, f"{d.title} {d.text}")
+        sim = compute_dense_cosine_similarity(query, f"{d.title} {d.text}", provider=embedding_provider)
         scored.append({"doc": d, "score": sim, "text": d.text})
 
     if search_type.lower() == "mmr":
         selected = []
         unselected = list(scored)
         lambd = 0.7
-        target_count = min(top_k, len(docs))
-        while len(selected) < target_count and unselected:
+        while len(selected) < k_val and unselected:
             best_idx = 0
             best_mmr = -1e9
             for i, cand in enumerate(unselected):
                 rel = cand["score"]
                 max_redundancy = 0.0
                 for sel in selected:
-                    sim = compute_dense_cosine_similarity(cand["text"], sel["text"])
+                    sim = compute_dense_cosine_similarity(cand["text"], sel["text"], provider=embedding_provider)
                     if sim > max_redundancy:
                         max_redundancy = sim
                 mmr_val = (lambd * rel) - ((1.0 - lambd) * max_redundancy)
@@ -235,10 +302,23 @@ def perform_vector_retrieval(docs: List[ContextDoc], query: str, search_type: st
                     best_mmr = mmr_val
                     best_idx = i
             selected.append(unselected.pop(best_idx))
-        return [item["doc"] for item in selected]
+        return [
+            ContextDoc(
+                title=item["doc"].title,
+                text=item["doc"].text,
+                score=round(float(item["score"]), 4)
+            ) for item in selected
+        ]
     else:
         scored.sort(key=lambda x: x["score"], reverse=True)
-        return [item["doc"] for item in scored[:top_k]]
+        return [
+            ContextDoc(
+                title=item["doc"].title,
+                text=item["doc"].text,
+                score=round(float(item["score"]), 4)
+            ) for item in scored[:k_val]
+        ]
+
 
 async def generate_llm_answer(
     query: str, 
@@ -250,8 +330,8 @@ async def generate_llm_answer(
     perturbation_type: str = "spelling"
 ) -> tuple[str, Optional[str]]:
     """
-    Generates an LLM response using local Ollama (llama3/mistral), cloud Gemini API,
-    or benchmark synthetic fallback. Guarantees clean baseline isolation.
+    Generates an LLM response using local Ollama (qwen3.5:9b, llama3, mistral),
+    cloud Gemini API, or benchmark synthetic fallback with robust error handling.
     """
     ctx_text = "\n".join([f"[{c.title}]: {c.text}" for c in contexts])
     
@@ -264,18 +344,21 @@ async def generate_llm_answer(
 
     warning_msg = None
 
-    # 1. Ollama Local LLM Integration
-    if model_choice.startswith("ollama/") or model_choice in ["llama3", "mistral"]:
+    # 1. Ollama Local LLM Integration (Supporting qwen3.5:9b, llama3, mistral)
+    if model_choice.startswith("ollama/") or model_choice in ["qwen3.5:9b", "llama3", "mistral", "qwen2.5:7b"]:
         model_name = model_choice.replace("ollama/", "")
         ollama_url = "http://localhost:11434/api/generate"
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=20.0) as client:
                 res = await client.post(
                     ollama_url,
                     json={
                         "model": model_name,
                         "prompt": f"{system_prompt}\n\n{prompt}",
-                        "stream": False
+                        "stream": False,
+                        "options": {
+                            "num_predict": 8000
+                        }
                     }
                 )
                 if res.status_code == 200:
@@ -283,12 +366,20 @@ async def generate_llm_answer(
                     answer = data.get("response", "").strip()
                     if answer:
                         return answer, None
+                else:
+                    warning_msg = f"Ollama HTTP {res.status_code} for '{model_name}'. Used synthetic fallback."
+        except httpx.ConnectError:
+            warning_msg = f"Ollama service offline (could not reach localhost:11434 for model '{model_name}'). Used synthetic fallback."
+            print(warning_msg)
+        except httpx.TimeoutException:
+            warning_msg = f"Ollama request timed out for model '{model_name}'. Used synthetic fallback."
+            print(warning_msg)
         except Exception as e:
-            warning_msg = f"Ollama local service offline or model '{model_name}' unreachable at localhost:11434 ({str(e)}). Used synthetic fallback."
+            warning_msg = f"Ollama local error for '{model_name}': {str(e)}. Used synthetic fallback."
             print(warning_msg)
 
     # 2. Gemini Cloud API Integration
-    if model_choice == "gemini-3-flash-preview" or gemini_api_key:
+    if model_choice == "gemini-3-flash-preview" or (gemini_api_key and not model_choice.startswith("ollama/")):
         api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
         if api_key:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={api_key}"
@@ -316,27 +407,31 @@ async def generate_llm_answer(
         else:
             return ground_truth, warning_msg
 
+
 async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key: Optional[str] = None) -> tuple[str, Optional[str]]:
     """
     Generates a semantic rephrase of the input query for the perturbed test pipeline.
-    Uses local Ollama, cloud Gemini API, or high-quality rule-based linguistic rephraser.
+    Uses local Ollama (including qwen3.5:9b), cloud Gemini API, or high-quality rule-based linguistic rephraser.
     """
     rephrase_system_prompt = "You are a linguistic expert assistant. Rephrase the input question concisely while preserving its exact semantic intent. Return ONLY the rephrased question text."
     prompt = f"Rephrase this question concisely while maintaining exact meaning: \"{query}\""
     warning_msg = None
 
     # 1. Ollama Local LLM
-    if model_choice.startswith("ollama/") or model_choice in ["llama3", "mistral"]:
+    if model_choice.startswith("ollama/") or model_choice in ["qwen3.5:9b", "llama3", "mistral"]:
         model_name = model_choice.replace("ollama/", "")
         ollama_url = "http://localhost:11434/api/generate"
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=20.0) as client:
                 res = await client.post(
                     ollama_url,
                     json={
                         "model": model_name,
                         "prompt": f"{rephrase_system_prompt}\n\n{prompt}",
-                        "stream": False
+                        "stream": False,
+                        "options": {
+                            "num_predict": 8000
+                        }
                     }
                 )
                 if res.status_code == 200:
@@ -344,11 +439,11 @@ async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key:
                     rephrased = data.get("response", "").strip().strip('"')
                     if rephrased and rephrased != query:
                         return rephrased, None
-        except Exception as e:
-            warning_msg = f"Ollama local service offline for query rephrasing."
+        except Exception:
+            warning_msg = f"Ollama local service unreachable for query rephrasing."
 
     # 2. Gemini Cloud API
-    if model_choice == "gemini-3-flash-preview" or gemini_api_key:
+    if model_choice == "gemini-3-flash-preview" or (gemini_api_key and not model_choice.startswith("ollama/")):
         api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
         if api_key:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={api_key}"
@@ -385,7 +480,9 @@ async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key:
         
     return rephrased, warning_msg
 
+
 def inject_spelling_typos(text: str, error_rate: float = 0.25) -> str:
+    """Injects stochastic spelling perturbations into input query string."""
     if not text:
         return ""
     words = text.split()
@@ -408,36 +505,74 @@ def inject_spelling_typos(text: str, error_rate: float = 0.25) -> str:
             result.append(word)
     return " ".join(result)
 
+
 def inject_conflicting_context(contexts: List[ContextDoc], query: str, ground_truth: str) -> List[ContextDoc]:
+    """Injects a high-priority synthetic contradictory context passage."""
     conflict_doc = ContextDoc(
         title="Synthetic_Conflicting_Record",
-        text=f"NOTICE: Regarding the query '{query}', conflicting modern sources refute that '{ground_truth}' is accurate. Historical logs indicate synthetic alternative facts."
+        text=f"NOTICE: Regarding the query '{query}', conflicting modern sources refute that '{ground_truth}' is accurate. Historical logs indicate synthetic alternative facts.",
+        score=0.99
     )
     return [conflict_doc] + [c for c in contexts]
 
+
 @app.get("/api/health")
 def health_check():
-    """Returns backend status, active embedding model, and vector retrieval capabilities."""
+    """Returns backend status, active embedding models, and vector retrieval capabilities."""
     return {
         "status": "online",
         "embeddings_active": True,
-        "model_name": "all-MiniLM-L6-v2" if embed_model is not None else "fallback-dense-hashing",
+        "supported_embedding_models": [
+            "sentence-transformers/all-mpnet-base-v2",
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "ollama/nomic-embed-text"
+        ],
+        "supported_llm_models": [
+            "ollama/qwen3.5:9b",
+            "ollama/llama3",
+            "ollama/mistral",
+            "gemini-3-flash-preview",
+            "synthetic-evaluator"
+        ],
         "vector_store": "ChromaDB (LangChain)" if CHROMA_AVAILABLE else "Dense Vector Distance",
         "ollama_support": True
     }
 
+
 @app.get("/api/dataset")
 def get_dataset():
-    """Serves the 50+ HotpotQA benchmark evaluation questions."""
+    """Serves the HotpotQA benchmark evaluation questions."""
     ds = load_hotpotqa_dataset()
     return {"dataset": ds, "total": len(ds)}
+
+
+@app.post("/api/ingest")
+def trigger_ingestion(req: Optional[IngestRequest] = None):
+    """Triggers the modular HotpotQA ingestion utility to dynamically seed ChromaDB."""
+    try:
+        from ingest import ingest_hotpotqa
+        num_rows = req.num_rows if req else 50
+        emb_model = req.embedding_model if req else "sentence-transformers/all-mpnet-base-v2"
+        chunk_size = req.chunk_size if req else 200
+        chunk_overlap = req.chunk_overlap if req else 50
+        
+        res = ingest_hotpotqa(
+            num_rows=num_rows,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            embedding_model_name=emb_model
+        )
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+
 
 @app.post("/api/run-evaluation", response_model=EvaluationResponse)
 async def run_evaluation(req: EvaluationRequest):
     """
     Main Evaluation Endpoint:
     Processes baseline and perturbed RAG pipelines through ChromaDB retrieval and local/cloud LLMs,
-    and returns granular pipeline error telemetry metrics.
+    and returns granular pipeline error telemetry metrics with per-document relevance scores.
     """
     active_query = req.custom_query.strip() if req.custom_query and req.custom_query.strip() else req.baseline_query
     ground_truth = req.ground_truth
@@ -445,7 +580,13 @@ async def run_evaluation(req: EvaluationRequest):
     # 1. Pristine Baseline Pipeline (Guaranteed 100% clean reference control)
     baseline_query = active_query
     clean_baseline_contexts = [c for c in req.contexts if "Synthetic" not in c.title]
-    baseline_contexts = perform_vector_retrieval(clean_baseline_contexts, baseline_query, req.search_type, req.top_k)
+    baseline_contexts = perform_vector_retrieval(
+        clean_baseline_contexts, 
+        baseline_query, 
+        req.search_type, 
+        req.top_k, 
+        req.embedding_provider
+    )
 
     # 2. Perturbed Test Pipeline (Receives perturbation triggers)
     perturbed_query = active_query
@@ -463,7 +604,13 @@ async def run_evaluation(req: EvaluationRequest):
     elif req.perturbation_type == "conflict":
         raw_perturbed_contexts = inject_conflicting_context(clean_baseline_contexts, active_query, ground_truth)
 
-    perturbed_contexts = perform_vector_retrieval(raw_perturbed_contexts, perturbed_query, req.search_type, req.top_k)
+    perturbed_contexts = perform_vector_retrieval(
+        raw_perturbed_contexts, 
+        perturbed_query, 
+        req.search_type, 
+        req.top_k, 
+        req.embedding_provider
+    )
 
     # 3. LLM Answer Generation with Strict Isolation
     baseline_answer, warn1 = await generate_llm_answer(
@@ -490,7 +637,7 @@ async def run_evaluation(req: EvaluationRequest):
 
     # 4. Dense Vector Telemetry & Metric Calculations
     # A. Query Embedding Shift: CosineSim(E(Q_baseline), E(Q_perturbed))
-    query_shift = compute_dense_cosine_similarity(baseline_query, perturbed_query)
+    query_shift = compute_dense_cosine_similarity(baseline_query, perturbed_query, req.embedding_provider)
 
     # B. Retrieval Rank Shift: Top-K Jaccard Overlap
     rank_shift_jaccard = compute_jaccard_overlap(baseline_contexts, perturbed_contexts)
@@ -498,18 +645,17 @@ async def run_evaluation(req: EvaluationRequest):
     # C. Context Construction Loss: CosineSim(E(C_baseline), E(C_perturbed))
     base_ctx_str = " ".join([f"{c.title} {c.text}" for c in baseline_contexts])
     pert_ctx_str = " ".join([f"{c.title} {c.text}" for c in perturbed_contexts])
-    context_loss_sim = compute_dense_cosine_similarity(base_ctx_str, pert_ctx_str)
+    context_loss_sim = compute_dense_cosine_similarity(base_ctx_str, pert_ctx_str, req.embedding_provider)
 
     # D. Generation vs Ground Truth Cosine Similarity
-    gen_gt_baseline_sim = compute_dense_cosine_similarity(baseline_answer, ground_truth)
-    gen_gt_perturbed_sim = compute_dense_cosine_similarity(perturbed_answer, ground_truth)
+    gen_gt_baseline_sim = compute_dense_cosine_similarity(baseline_answer, ground_truth, req.embedding_provider)
+    gen_gt_perturbed_sim = compute_dense_cosine_similarity(perturbed_answer, ground_truth, req.embedding_provider)
 
     # High-level retrieval vs generation similarity
     retrieval_sim = context_loss_sim
-    generation_sim = compute_dense_cosine_similarity(baseline_answer, perturbed_answer)
+    generation_sim = compute_dense_cosine_similarity(baseline_answer, perturbed_answer, req.embedding_provider)
 
     # E. Mathematical Error Amplification Factor
-    # Amplification Factor = (1 - Sim_generation) / ((1 - Sim_retrieval) + 0.00001)
     retrieval_loss = max(0.0, 1.0 - retrieval_sim)
     generation_loss = max(0.0, 1.0 - generation_sim)
     amplification_factor = generation_loss / (retrieval_loss + 0.00001)
@@ -553,6 +699,7 @@ async def run_evaluation(req: EvaluationRequest):
         metrics=metrics,
         warning=warning_combined
     )
+
 
 if __name__ == "__main__":
     import uvicorn

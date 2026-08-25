@@ -45,10 +45,10 @@ export async function executeBackendEvaluation(params) {
         contexts: params.contexts || [],
         perturbation_type: params.perturbationType || 'spelling',
         typo_rate: parseFloat(params.typoRate) || 0.25,
-        embedding_provider: params.embeddingProvider || 'huggingface/all-MiniLM-L6-v2',
+        embedding_provider: params.embeddingProvider || 'sentence-transformers/all-mpnet-base-v2',
         search_type: params.searchType || 'similarity',
         top_k: parseInt(params.topK, 10) || 2,
-        llm_model: params.llmModel || 'gemini-3-flash-preview',
+        llm_model: params.llmModel || 'ollama/qwen3.5:9b',
         gemini_api_key: params.geminiApiKey || window.GEMINI_API_KEY || null
     };
 

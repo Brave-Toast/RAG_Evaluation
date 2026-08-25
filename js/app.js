@@ -126,7 +126,7 @@ export async function executeEvaluation() {
         const perturbationType = document.querySelector('input[name="perturbation-type"]:checked')?.value || 'spelling';
         const typoRate = parseFloat(document.getElementById('typo-rate-slider').value) / 100;
         const llmModelChoice = document.getElementById('llm-model').value;
-        const embeddingProvider = document.getElementById('embedding-provider')?.value || 'huggingface/all-MiniLM-L6-v2';
+        const embeddingProvider = document.getElementById('embedding-provider')?.value || 'sentence-transformers/all-mpnet-base-v2';
         const searchType = document.getElementById('search-type').value;
         const topK = parseInt(document.getElementById('top-k').value, 10) || 2;
 

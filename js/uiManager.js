@@ -17,6 +17,8 @@ export function renderContexts(containerId, contexts) {
     contexts.forEach((c, i) => {
         const card = document.createElement('div');
         const isConflictDoc = c.title && c.title.includes("Synthetic");
+        const hasScore = c.score !== undefined && c.score !== null;
+        const scoreVal = hasScore ? Number(c.score).toFixed(4) : null;
         
         card.className = `p-2.5 rounded-lg border text-xs transition fade-in ${
             isConflictDoc 
@@ -25,9 +27,12 @@ export function renderContexts(containerId, contexts) {
         }`;
 
         card.innerHTML = `
-            <div class="flex items-center justify-between font-bold mb-1 text-[11px]">
-                <span class="${isConflictDoc ? 'text-rose-400' : 'text-indigo-400'}">[Doc ${i+1}] ${c.title}</span>
-                ${isConflictDoc ? '<span class="text-[9px] bg-rose-500/20 px-1.5 py-0.5 rounded text-rose-300">Conflicting Injected</span>' : ''}
+            <div class="flex items-center justify-between font-bold mb-1.5 text-[11px]">
+                <span class="${isConflictDoc ? 'text-rose-400' : 'text-indigo-400'} truncate mr-2">[Doc ${i+1}] ${c.title}</span>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    ${hasScore ? `<span class="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="ChromaDB Relevance Score"><i class="fa-solid fa-bullseye text-[8px] mr-1"></i>Score: ${scoreVal}</span>` : ''}
+                    ${isConflictDoc ? '<span class="text-[9px] bg-rose-500/20 px-1.5 py-0.5 rounded text-rose-300">Conflicting Injected</span>' : ''}
+                </div>
             </div>
             <p class="leading-relaxed font-sans text-[11px]">${c.text}</p>
         `;

@@ -144,8 +144,9 @@
                         <div>
                             <span class="text-slate-400 mb-1 block">Embedding Model</span>
                             <select id="embedding-provider" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200">
-                                <option value="ollama/nomic-embed-text" selected>Ollama / nomic-embed-text (Local)</option>
-                                <option value="huggingface/all-MiniLM-L6-v2">HuggingFace / all-MiniLM-L6-v2</option>
+                                <option value="sentence-transformers/all-mpnet-base-v2" selected>SentenceTransformers / all-mpnet-base-v2</option>
+                                <option value="sentence-transformers/all-MiniLM-L6-v2">SentenceTransformers / all-MiniLM-L6-v2</option>
+                                <option value="ollama/nomic-embed-text">Ollama / nomic-embed-text (Local)</option>
                                 <option value="openai/text-embedding-3-small">OpenAI / text-embedding-3-small</option>
                             </select>
                         </div>
@@ -167,7 +168,8 @@
                         <div>
                             <span class="text-slate-400 mb-1 block">LLM Generation Provider</span>
                             <select id="llm-model" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200">
-                                <option value="ollama/llama3" selected>Ollama / llama3 (Local)</option>
+                                <option value="ollama/qwen3.5:9b" selected>Ollama / qwen3.5:9b (Local)</option>
+                                <option value="ollama/llama3">Ollama / llama3 (Local)</option>
                                 <option value="ollama/mistral">Ollama / mistral (Local)</option>
                                 <option value="gemini-3-flash-preview">Gemini 3 Flash (Live Cloud)</option>
                                 <option value="synthetic-evaluator">Synthetic Benchmark LLM</option>
