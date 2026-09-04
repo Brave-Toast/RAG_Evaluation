@@ -2348,5 +2348,710 @@
         "text": "Mário-Henrique Leiria (1923–1980) was a Portuguese surrealist poet. Born in Lisbon, he studied at the Escola de Belas Artes. He and his fellow surrealists were involved in an absurdist plot to overthrow the dictatorship of Antonio Salazar. He is best known for his books \"Contos do Gin-Tonic\" (Gin and Tonic Tales, 1973) and \"Novos Contos do Gin\" (More Gin Tales, 1974). He died in 1980."
       }
     ]
+  },
+  {
+    "id": "961c7381db848934ec8d37d5",
+    "question": "The director of the film that won Best Picture at the 92nd Academy Awards was born in which South Korean city?",
+    "ground_truth": "Daegu",
+    "contexts": [
+      {
+        "title": "92nd Academy Awards",
+        "text": "The 92nd Academy Awards honored films released in 2019. Parasite won Best Picture, while Bong Joon Ho won the award for directing the film."
+      },
+      {
+        "title": "Parasite",
+        "text": "Parasite is a 2019 South Korean film directed by Bong Joon Ho. The film follows the Kim family as they become involved with the wealthy Park household."
+      },
+      {
+        "title": "Bong Joon Ho",
+        "text": "Bong Joon Ho is a South Korean filmmaker born in Daegu, Korea, on September 14, 1969. His feature films include Memories of Murder, The Host, Snowpiercer, Okja and Parasite."
+      },
+      {
+        "title": "1917",
+        "text": "1917 is a war film directed by Sam Mendes. It was nominated for Best Picture at the 92nd Academy Awards and won awards including cinematography and visual effects."
+      },
+      {
+        "title": "Sam Mendes",
+        "text": "Sam Mendes is an English film and stage director whose films include American Beauty, Skyfall, Spectre and 1917."
+      },
+      {
+        "title": "Joker",
+        "text": "Joker is a 2019 film directed by Todd Phillips and starring Joaquin Phoenix. The film received a Best Picture nomination at the 92nd Academy Awards."
+      },
+      {
+        "title": "Once Upon a Time in Hollywood",
+        "text": "Once Upon a Time in Hollywood is a 2019 film written and directed by Quentin Tarantino. It was nominated for Best Picture at the 92nd Academy Awards."
+      },
+      {
+        "title": "The Irishman",
+        "text": "The Irishman is a crime film directed by Martin Scorsese. It was among the films nominated for Best Picture at the 92nd Academy Awards."
+      },
+      {
+        "title": "Jojo Rabbit",
+        "text": "Jojo Rabbit is a comedy-drama written and directed by Taika Waititi. It received several nominations at the 92nd Academy Awards."
+      },
+      {
+        "title": "Marriage Story",
+        "text": "Marriage Story is a drama film written and directed by Noah Baumbach. It was nominated for Best Picture at the 92nd Academy Awards."
+      }
+    ]
+  },
+  {
+    "id": "45b3079eda32565a4b5bfcc5",
+    "question": "The commander of the first crewed mission to land humans on the Moon was born in which Ohio city?",
+    "ground_truth": "Wapakoneta",
+    "contexts": [
+      {
+        "title": "Apollo 11",
+        "text": "Apollo 11 was the first crewed mission to land humans on the Moon. Neil Armstrong served as mission commander, Buzz Aldrin as lunar module pilot and Michael Collins as command module pilot."
+      },
+      {
+        "title": "Neil Armstrong",
+        "text": "Neil Armstrong was an American astronaut and aeronautical engineer born in Wapakoneta, Ohio, on August 5, 1930. He commanded Apollo 11 and became the first person to walk on the Moon."
+      },
+      {
+        "title": "Buzz Aldrin",
+        "text": "Buzz Aldrin served as lunar module pilot on Apollo 11 and became the second person to walk on the Moon."
+      },
+      {
+        "title": "Michael Collins",
+        "text": "Michael Collins served as command module pilot on Apollo 11 and remained in lunar orbit while Armstrong and Aldrin explored the surface."
+      },
+      {
+        "title": "Apollo 12",
+        "text": "Apollo 12 was the second crewed mission to land on the Moon. Charles Conrad served as commander of the mission."
+      },
+      {
+        "title": "Gemini 8",
+        "text": "Gemini 8 was a crewed spaceflight commanded by Neil Armstrong, with David Scott serving as pilot."
+      },
+      {
+        "title": "Apollo 8",
+        "text": "Apollo 8 was the first crewed spacecraft to orbit the Moon. Its crew consisted of Frank Borman, James Lovell and William Anders."
+      },
+      {
+        "title": "Apollo 10",
+        "text": "Apollo 10 was a crewed lunar mission that tested procedures and hardware shortly before Apollo 11."
+      },
+      {
+        "title": "John Glenn",
+        "text": "John Glenn was an American astronaut from Ohio who became the first American to orbit Earth."
+      },
+      {
+        "title": "Wapakoneta",
+        "text": "Wapakoneta is a city in Auglaize County, Ohio. It is known as the birthplace of astronaut Neil Armstrong."
+      }
+    ]
+  },
+  {
+    "id": "8f65574c9e979633ae28b66c",
+    "question": "The woman who won the 1911 Nobel Prize in Chemistry for work including the discovery of radium and polonium was born in which city?",
+    "ground_truth": "Warsaw",
+    "contexts": [
+      {
+        "title": "Nobel Prize in Chemistry 1911",
+        "text": "The 1911 Nobel Prize in Chemistry was awarded to Marie Curie for work including the discovery of radium and polonium, the isolation of radium and research into its properties."
+      },
+      {
+        "title": "Marie Curie",
+        "text": "Marie Curie, born Maria Skłodowska, was born in Warsaw on November 7, 1867. She later moved to Paris and became a pioneering researcher in radioactivity."
+      },
+      {
+        "title": "Pierre Curie",
+        "text": "Pierre Curie was a French physicist who worked with Marie Curie. He shared the 1903 Nobel Prize in Physics with Marie Curie and Henri Becquerel."
+      },
+      {
+        "title": "Nobel Prize in Physics 1903",
+        "text": "The 1903 Nobel Prize in Physics was shared by Henri Becquerel, Pierre Curie and Marie Curie for research related to radiation phenomena."
+      },
+      {
+        "title": "Radium",
+        "text": "Radium is a radioactive chemical element discovered by Marie and Pierre Curie in the course of their research on uranium minerals."
+      },
+      {
+        "title": "Polonium",
+        "text": "Polonium is a radioactive element named after Poland and discovered during research by Marie and Pierre Curie."
+      },
+      {
+        "title": "Irène Joliot-Curie",
+        "text": "Irène Joliot-Curie was the daughter of Marie and Pierre Curie and later received a Nobel Prize in Chemistry with Frédéric Joliot-Curie."
+      },
+      {
+        "title": "Henri Becquerel",
+        "text": "Henri Becquerel was a French physicist associated with the discovery of spontaneous radioactivity."
+      },
+      {
+        "title": "Sorbonne University",
+        "text": "The Sorbonne in Paris was associated with Marie Curie's academic career and research."
+      },
+      {
+        "title": "Paris",
+        "text": "Paris is the capital of France and was the city where Marie Curie pursued much of her higher education and scientific career."
+      }
+    ]
+  },
+  {
+    "id": "76a82b4f207d99677069bd9d",
+    "question": "The filmmaker who directed the Best Picture winner at the 86th Academy Awards was born in which city?",
+    "ground_truth": "London",
+    "contexts": [
+      {
+        "title": "86th Academy Awards",
+        "text": "At the 86th Academy Awards, 12 Years a Slave won the Academy Award for Best Picture."
+      },
+      {
+        "title": "12 Years a Slave",
+        "text": "12 Years a Slave is a historical drama directed by British filmmaker Steve McQueen and based on the memoir of Solomon Northup."
+      },
+      {
+        "title": "Steve McQueen",
+        "text": "Steve McQueen is a British artist and filmmaker born in London in 1969. His feature films include Hunger, Shame and 12 Years a Slave."
+      },
+      {
+        "title": "Gravity",
+        "text": "Gravity was nominated for Best Picture at the 86th Academy Awards. Alfonso Cuarón won the directing award for the film."
+      },
+      {
+        "title": "American Hustle",
+        "text": "American Hustle was among the films nominated for Best Picture at the 86th Academy Awards."
+      },
+      {
+        "title": "Dallas Buyers Club",
+        "text": "Dallas Buyers Club received multiple nominations at the 86th Academy Awards, including Best Picture."
+      },
+      {
+        "title": "Her",
+        "text": "Her is a film written and directed by Spike Jonze and was nominated for Best Picture at the 86th Academy Awards."
+      },
+      {
+        "title": "Nebraska",
+        "text": "Nebraska is a film directed by Alexander Payne and was nominated for Best Picture at the 86th Academy Awards."
+      },
+      {
+        "title": "Philomena",
+        "text": "Philomena is a drama directed by Stephen Frears and was nominated for Best Picture at the 86th Academy Awards."
+      },
+      {
+        "title": "The Wolf of Wall Street",
+        "text": "The Wolf of Wall Street is a film directed by Martin Scorsese and was nominated for Best Picture at the 86th Academy Awards."
+      }
+    ]
+  },
+  {
+    "id": "5c7f9fa33abdfb95233586f0",
+    "question": "The person for whom the Hubble Space Telescope was named was born in which Missouri city?",
+    "ground_truth": "Marshfield",
+    "contexts": [
+      {
+        "title": "Hubble Space Telescope",
+        "text": "The Hubble Space Telescope is a space-based observatory named in honor of twentieth-century astronomer Edwin Hubble."
+      },
+      {
+        "title": "Edwin Hubble",
+        "text": "Edwin Powell Hubble was an American astronomer born in Marshfield, Missouri, on November 20, 1889. His work transformed understanding of galaxies and the expanding universe."
+      },
+      {
+        "title": "Lyman Spitzer",
+        "text": "Astronomer Lyman Spitzer was an early advocate for a large observatory in space and promoted the scientific value of space-based astronomy."
+      },
+      {
+        "title": "James Webb Space Telescope",
+        "text": "The James Webb Space Telescope is a major infrared space observatory named after former NASA administrator James E. Webb."
+      },
+      {
+        "title": "Nancy Grace Roman",
+        "text": "Nancy Grace Roman was an American astronomer who played an important role in establishing NASA's space astronomy program."
+      },
+      {
+        "title": "Mount Wilson Observatory",
+        "text": "Edwin Hubble carried out influential observations at Mount Wilson Observatory in California using its large telescopes."
+      },
+      {
+        "title": "Hubble's law",
+        "text": "Hubble's law describes the relationship between the distances of galaxies and their recession velocities."
+      },
+      {
+        "title": "Great Observatories program",
+        "text": "NASA's Great Observatories program included major space telescopes designed to observe the universe at different wavelengths."
+      },
+      {
+        "title": "Space Telescope Science Institute",
+        "text": "The Space Telescope Science Institute supports the scientific operations of major space observatories including Hubble."
+      },
+      {
+        "title": "Marshfield, Missouri",
+        "text": "Marshfield is a city in Missouri and is the birthplace of astronomer Edwin Hubble."
+      }
+    ]
+  },
+  {
+    "id": "91c38291d3105acf9d15a12d",
+    "question": "The author of Animal Farm was born in which town in British India?",
+    "ground_truth": "Motihari",
+    "contexts": [
+      {
+        "title": "Animal Farm",
+        "text": "Animal Farm is a political satire written by George Orwell. The novel was published in 1945."
+      },
+      {
+        "title": "George Orwell",
+        "text": "George Orwell was the pen name of Eric Arthur Blair. He was born in Motihari, Bengal, in British India on June 25, 1903."
+      },
+      {
+        "title": "Nineteen Eighty-Four",
+        "text": "Nineteen Eighty-Four is a dystopian novel by George Orwell published in 1949."
+      },
+      {
+        "title": "Homage to Catalonia",
+        "text": "Homage to Catalonia is George Orwell's account of his experiences during the Spanish Civil War."
+      },
+      {
+        "title": "The Road to Wigan Pier",
+        "text": "The Road to Wigan Pier is a work by George Orwell dealing with working-class conditions in northern England and questions of socialism."
+      },
+      {
+        "title": "Aldous Huxley",
+        "text": "Aldous Huxley was an English writer best known for the dystopian novel Brave New World."
+      },
+      {
+        "title": "Brave New World",
+        "text": "Brave New World is a dystopian novel by English author Aldous Huxley."
+      },
+      {
+        "title": "Burmese Days",
+        "text": "Burmese Days is a novel by George Orwell drawing on his experience in colonial Burma."
+      },
+      {
+        "title": "Down and Out in Paris and London",
+        "text": "Down and Out in Paris and London is an early book by George Orwell describing poverty in the two cities."
+      },
+      {
+        "title": "Motihari",
+        "text": "Motihari is a town in Bihar, India, and was the birthplace of writer Eric Arthur Blair, better known as George Orwell."
+      }
+    ]
+  },
+  {
+    "id": "e5e671a351aad88241cec369",
+    "question": "The winner of the Academy Award for Animated Feature at the 75th Academy Awards was directed by a filmmaker born in which city?",
+    "ground_truth": "Tokyo",
+    "contexts": [
+      {
+        "title": "75th Academy Awards",
+        "text": "At the 75th Academy Awards, Spirited Away won the Academy Award for Animated Feature Film."
+      },
+      {
+        "title": "Spirited Away",
+        "text": "Spirited Away is a Japanese animated fantasy film written and directed by Hayao Miyazaki."
+      },
+      {
+        "title": "Hayao Miyazaki",
+        "text": "Hayao Miyazaki is a Japanese animator and filmmaker born in Tokyo, Japan, in 1941. He became one of the founders of Studio Ghibli."
+      },
+      {
+        "title": "Ice Age",
+        "text": "Ice Age was nominated for Animated Feature Film at the 75th Academy Awards."
+      },
+      {
+        "title": "Lilo & Stitch",
+        "text": "Lilo & Stitch was nominated for Animated Feature Film at the 75th Academy Awards."
+      },
+      {
+        "title": "Spirit: Stallion of the Cimarron",
+        "text": "Spirit: Stallion of the Cimarron was nominated for Animated Feature Film at the 75th Academy Awards."
+      },
+      {
+        "title": "Treasure Planet",
+        "text": "Treasure Planet was nominated for Animated Feature Film at the 75th Academy Awards."
+      },
+      {
+        "title": "Studio Ghibli",
+        "text": "Studio Ghibli is a Japanese animation studio associated with filmmakers including Hayao Miyazaki and Isao Takahata."
+      },
+      {
+        "title": "Princess Mononoke",
+        "text": "Princess Mononoke is an animated film written and directed by Hayao Miyazaki."
+      },
+      {
+        "title": "Howl's Moving Castle",
+        "text": "Howl's Moving Castle is a Japanese animated fantasy film directed by Hayao Miyazaki."
+      }
+    ]
+  },
+  {
+    "id": "e2c9f3715a5375bfa48b8edf",
+    "question": "The scientist associated with the discovery of penicillin who shared the 1945 Nobel Prize in Physiology or Medicine was born near which Scottish town?",
+    "ground_truth": "Darvel",
+    "contexts": [
+      {
+        "title": "Penicillin",
+        "text": "Alexander Fleming is associated with the discovery of penicillin, an antibacterial substance that became highly important in medicine."
+      },
+      {
+        "title": "Nobel Prize in Physiology or Medicine 1945",
+        "text": "The 1945 Nobel Prize in Physiology or Medicine was awarded jointly to Alexander Fleming, Ernst Boris Chain and Howard Walter Florey for penicillin and its curative effect in infectious diseases."
+      },
+      {
+        "title": "Alexander Fleming",
+        "text": "Alexander Fleming was born at Lochfield near Darvel in Ayrshire, Scotland, on August 6, 1881. He later studied medicine in London."
+      },
+      {
+        "title": "Howard Florey",
+        "text": "Howard Florey was a pathologist who played a major role in developing penicillin into an effective medical treatment."
+      },
+      {
+        "title": "Ernst Boris Chain",
+        "text": "Ernst Boris Chain was a biochemist who shared the 1945 Nobel Prize in Physiology or Medicine with Fleming and Florey."
+      },
+      {
+        "title": "St Mary's Hospital",
+        "text": "Alexander Fleming conducted important bacteriological research at St Mary's Hospital in London."
+      },
+      {
+        "title": "Lysozyme",
+        "text": "Before his work on penicillin, Alexander Fleming discovered lysozyme, an enzyme with antibacterial properties."
+      },
+      {
+        "title": "Antibiotic",
+        "text": "Antibiotics are substances used to treat bacterial infections, and penicillin became one of the earliest widely used examples."
+      },
+      {
+        "title": "Ayrshire",
+        "text": "Ayrshire is a historic county in southwestern Scotland that includes the area near Darvel."
+      },
+      {
+        "title": "Darvel",
+        "text": "Darvel is a small town in East Ayrshire, Scotland, near the place where Alexander Fleming was born."
+      }
+    ]
+  },
+  {
+    "id": "2e1da24ba8704cdf7cfcce64",
+    "question": "The space telescope named after NASA's second administrator takes its name from a man born in which North Carolina community?",
+    "ground_truth": "Tally Ho",
+    "contexts": [
+      {
+        "title": "James Webb Space Telescope",
+        "text": "The James Webb Space Telescope was named after James E. Webb, who served as NASA's second administrator."
+      },
+      {
+        "title": "James E. Webb",
+        "text": "James Edwin Webb was NASA's second administrator, serving from 1961 to 1968. He was born in Tally Ho, North Carolina, on October 7, 1906."
+      },
+      {
+        "title": "NASA",
+        "text": "The National Aeronautics and Space Administration was established in 1958 as the United States civilian space agency."
+      },
+      {
+        "title": "Hubble Space Telescope",
+        "text": "The Hubble Space Telescope is a space observatory named after astronomer Edwin Hubble."
+      },
+      {
+        "title": "Edwin Hubble",
+        "text": "Edwin Hubble was an American astronomer whose observations played an important role in modern extragalactic astronomy."
+      },
+      {
+        "title": "Nancy Grace Roman Space Telescope",
+        "text": "The Nancy Grace Roman Space Telescope is a NASA observatory named after astronomer Nancy Grace Roman."
+      },
+      {
+        "title": "Apollo program",
+        "text": "NASA's Apollo program conducted crewed lunar missions during the 1960s and 1970s."
+      },
+      {
+        "title": "John F. Kennedy",
+        "text": "John F. Kennedy was president of the United States during the early years of the Apollo lunar program."
+      },
+      {
+        "title": "Thomas O. Paine",
+        "text": "Thomas O. Paine served as NASA administrator after James E. Webb."
+      },
+      {
+        "title": "Tally Ho, North Carolina",
+        "text": "Tally Ho is a community in Granville County, North Carolina, and is noted as the birthplace of James E. Webb."
+      }
+    ]
+  },
+  {
+    "id": "d6dbde2594635e68cce4e277",
+    "question": "The artist whose album won Album of the Year at the 28th Annual Grammy Awards was born in which city?",
+    "ground_truth": "London",
+    "contexts": [
+      {
+        "title": "28th Annual Grammy Awards",
+        "text": "At the 28th Annual Grammy Awards, No Jacket Required won the Grammy Award for Album of the Year."
+      },
+      {
+        "title": "No Jacket Required",
+        "text": "No Jacket Required is a solo studio album by English musician Phil Collins."
+      },
+      {
+        "title": "Phil Collins",
+        "text": "Phil Collins was born Philip David Charles Collins in London, England, on January 30, 1951. He became known as both a solo artist and a member of Genesis."
+      },
+      {
+        "title": "Brothers in Arms",
+        "text": "Brothers in Arms by Dire Straits was nominated for Album of the Year at the 28th Annual Grammy Awards."
+      },
+      {
+        "title": "Whitney Houston",
+        "text": "Whitney Houston's self-titled album was nominated for Album of the Year at the 28th Annual Grammy Awards."
+      },
+      {
+        "title": "The Dream of the Blue Turtles",
+        "text": "The Dream of the Blue Turtles by Sting was nominated for Album of the Year at the 28th Annual Grammy Awards."
+      },
+      {
+        "title": "We Are the World",
+        "text": "The USA for Africa project We Are the World received major Grammy recognition during the same awards period."
+      },
+      {
+        "title": "Genesis",
+        "text": "Genesis is an English rock band in which Phil Collins became the drummer and later the lead vocalist."
+      },
+      {
+        "title": "Face Value",
+        "text": "Face Value is Phil Collins' debut solo studio album and includes the song In the Air Tonight."
+      },
+      {
+        "title": "Hugh Padgham",
+        "text": "Hugh Padgham is a record producer and engineer who worked with Phil Collins on No Jacket Required."
+      }
+    ]
+  },
+  {
+    "id": "2ca556da4416f5a0bf83db1a",
+    "question": "The singer who fronted Queen under a stage name was born on which East African island?",
+    "ground_truth": "Zanzibar",
+    "contexts": [
+      {
+        "title": "Queen",
+        "text": "Queen is a British rock band whose classic lineup included lead vocalist Freddie Mercury, guitarist Brian May, drummer Roger Taylor and bassist John Deacon."
+      },
+      {
+        "title": "Freddie Mercury",
+        "text": "Freddie Mercury was born Farrokh Bulsara on the East African island of Zanzibar on September 5, 1946. He later became the lead singer and frontman of Queen."
+      },
+      {
+        "title": "Brian May",
+        "text": "Brian May is an English guitarist and songwriter best known as a founding member of Queen."
+      },
+      {
+        "title": "Roger Taylor",
+        "text": "Roger Taylor is an English musician best known as the drummer of Queen."
+      },
+      {
+        "title": "John Deacon",
+        "text": "John Deacon is an English musician who played bass guitar in Queen's classic lineup."
+      },
+      {
+        "title": "Bohemian Rhapsody",
+        "text": "Bohemian Rhapsody is a song recorded by Queen and written by Freddie Mercury."
+      },
+      {
+        "title": "The Game",
+        "text": "The Game is a studio album by Queen that includes songs such as Another One Bites the Dust and Crazy Little Thing Called Love."
+      },
+      {
+        "title": "Smile",
+        "text": "Smile was a rock band involving Brian May and Roger Taylor before the formation of Queen."
+      },
+      {
+        "title": "Stone Town",
+        "text": "Stone Town is the historic centre of Zanzibar City on the island of Unguja, commonly called Zanzibar."
+      },
+      {
+        "title": "Zanzibar",
+        "text": "Zanzibar is an archipelago off the coast of East Africa and is associated with the birthplace of Freddie Mercury."
+      }
+    ]
+  },
+  {
+    "id": "d61138daa91ff15909e19726",
+    "question": "The physicist awarded the 1921 Nobel Prize especially for discovering the law of the photoelectric effect was born in which German city?",
+    "ground_truth": "Ulm",
+    "contexts": [
+      {
+        "title": "Nobel Prize in Physics 1921",
+        "text": "The 1921 Nobel Prize in Physics was awarded to Albert Einstein for his services to theoretical physics, especially his discovery of the law of the photoelectric effect."
+      },
+      {
+        "title": "Albert Einstein",
+        "text": "Albert Einstein was born in Ulm, Germany, on March 14, 1879. He later worked in Switzerland, Germany and the United States."
+      },
+      {
+        "title": "Photoelectric effect",
+        "text": "The photoelectric effect concerns the emission of electrons from a material when it absorbs electromagnetic radiation of sufficient frequency."
+      },
+      {
+        "title": "Max Planck",
+        "text": "Max Planck was a German physicist whose work on energy quanta was central to the development of quantum theory."
+      },
+      {
+        "title": "Niels Bohr",
+        "text": "Niels Bohr was a Danish physicist who received the 1922 Nobel Prize in Physics."
+      },
+      {
+        "title": "Special relativity",
+        "text": "Albert Einstein developed the special theory of relativity in the early twentieth century."
+      },
+      {
+        "title": "General relativity",
+        "text": "General relativity is Einstein's theory describing gravitation in terms of the geometry of spacetime."
+      },
+      {
+        "title": "Bern patent office",
+        "text": "Albert Einstein worked at the Swiss patent office in Bern during an important period of his early scientific career."
+      },
+      {
+        "title": "Princeton, New Jersey",
+        "text": "Einstein later lived and worked in Princeton, New Jersey, after emigrating to the United States."
+      },
+      {
+        "title": "Ulm",
+        "text": "Ulm is a city in the German state of Baden-Württemberg and is the birthplace of Albert Einstein."
+      }
+    ]
+  },
+  {
+    "id": "4f104b8624f3fcfe3a23563d",
+    "question": "The writer whose 1952 work The Old Man and the Sea was specifically noted when he received the 1954 Nobel Prize in Literature was born in which Illinois village?",
+    "ground_truth": "Oak Park",
+    "contexts": [
+      {
+        "title": "Nobel Prize in Literature 1954",
+        "text": "Ernest Hemingway received the 1954 Nobel Prize in Literature. The prize motivation highlighted his narrative skill and specifically referred to The Old Man and the Sea."
+      },
+      {
+        "title": "The Old Man and the Sea",
+        "text": "The Old Man and the Sea is a work by American writer Ernest Hemingway published in 1952."
+      },
+      {
+        "title": "Ernest Hemingway",
+        "text": "Ernest Hemingway was born in Oak Park, Illinois, on July 21, 1899. His major works include The Sun Also Rises, A Farewell to Arms and The Old Man and the Sea."
+      },
+      {
+        "title": "William Faulkner",
+        "text": "William Faulkner was an American novelist who received the Nobel Prize in Literature for 1949."
+      },
+      {
+        "title": "A Farewell to Arms",
+        "text": "A Farewell to Arms is a novel by Ernest Hemingway published in 1929."
+      },
+      {
+        "title": "The Sun Also Rises",
+        "text": "The Sun Also Rises is a novel by Ernest Hemingway published in the 1920s."
+      },
+      {
+        "title": "For Whom the Bell Tolls",
+        "text": "For Whom the Bell Tolls is a novel by Ernest Hemingway set during the Spanish Civil War."
+      },
+      {
+        "title": "Pulitzer Prize for Fiction",
+        "text": "The Old Man and the Sea received the Pulitzer Prize for Fiction before Hemingway was awarded the Nobel Prize in Literature."
+      },
+      {
+        "title": "Ketchum, Idaho",
+        "text": "Ernest Hemingway lived in Ketchum, Idaho, during the later part of his life."
+      },
+      {
+        "title": "Oak Park, Illinois",
+        "text": "Oak Park is a village near Chicago, Illinois, and is the birthplace of author Ernest Hemingway."
+      }
+    ]
+  },
+  {
+    "id": "2f5a33e92b71109e07561afa",
+    "question": "The 2016 Nobel Prize in Literature laureate, whose influential albums include Highway 61 Revisited, was born in which Minnesota city?",
+    "ground_truth": "Duluth",
+    "contexts": [
+      {
+        "title": "Nobel Prize in Literature 2016",
+        "text": "The 2016 Nobel Prize in Literature was awarded to Bob Dylan for creating new poetic expressions within the American song tradition."
+      },
+      {
+        "title": "Bob Dylan",
+        "text": "Bob Dylan was born in Duluth, Minnesota, on May 24, 1941, and grew up in Hibbing. He became an influential singer and songwriter."
+      },
+      {
+        "title": "Highway 61 Revisited",
+        "text": "Highway 61 Revisited is a 1965 Bob Dylan album and is regarded as one of the influential recordings of his career."
+      },
+      {
+        "title": "Blood on the Tracks",
+        "text": "Blood on the Tracks is a Bob Dylan album released in 1975."
+      },
+      {
+        "title": "Bringing It All Back Home",
+        "text": "Bringing It All Back Home is a Bob Dylan album released in 1965."
+      },
+      {
+        "title": "Blonde on Blonde",
+        "text": "Blonde on Blonde is a Bob Dylan album released in 1966."
+      },
+      {
+        "title": "Woody Guthrie",
+        "text": "American folk singer Woody Guthrie was an important musical influence on Bob Dylan."
+      },
+      {
+        "title": "Hibbing, Minnesota",
+        "text": "Bob Dylan spent much of his childhood in Hibbing, Minnesota, after being born elsewhere in the state."
+      },
+      {
+        "title": "Duluth, Minnesota",
+        "text": "Duluth is a city in northeastern Minnesota on Lake Superior and is the birthplace of Bob Dylan."
+      },
+      {
+        "title": "Literature Nobel laureates",
+        "text": "The Nobel Prize in Literature has been awarded to writers and other literary figures for work judged to have outstanding literary value."
+      }
+    ]
+  },
+  {
+    "id": "6c609fec30038c826ad9c932",
+    "question": "The author whose 1967 novel One Hundred Years of Solitude brought him major international success was born in which Colombian town?",
+    "ground_truth": "Aracataca",
+    "contexts": [
+      {
+        "title": "One Hundred Years of Solitude",
+        "text": "One Hundred Years of Solitude is a novel by Colombian writer Gabriel García Márquez published in 1967. It brought its author major international success."
+      },
+      {
+        "title": "Gabriel García Márquez",
+        "text": "Gabriel García Márquez was born in Aracataca, Colombia, on March 6, 1927. He became one of the best-known writers associated with magical realism."
+      },
+      {
+        "title": "Nobel Prize in Literature 1982",
+        "text": "The 1982 Nobel Prize in Literature was awarded to Gabriel García Márquez for novels and short stories combining fantastic and realistic elements."
+      },
+      {
+        "title": "Love in the Time of Cholera",
+        "text": "Love in the Time of Cholera is a novel by Gabriel García Márquez published in 1985."
+      },
+      {
+        "title": "The Autumn of the Patriarch",
+        "text": "The Autumn of the Patriarch is a novel by Gabriel García Márquez published in 1975."
+      },
+      {
+        "title": "Chronicle of a Death Foretold",
+        "text": "Chronicle of a Death Foretold is a novella by Gabriel García Márquez published in 1981."
+      },
+      {
+        "title": "Magical realism",
+        "text": "Magical realism is a literary mode in which fantastic or extraordinary events appear within otherwise realistic settings."
+      },
+      {
+        "title": "Macondo",
+        "text": "Macondo is the fictional town at the centre of One Hundred Years of Solitude."
+      },
+      {
+        "title": "Bogotá",
+        "text": "Gabriel García Márquez studied in Bogotá during part of his youth and later worked as a journalist and writer."
+      },
+      {
+        "title": "Aracataca",
+        "text": "Aracataca is a town in northern Colombia and is the birthplace of Gabriel García Márquez."
+      }
+    ]
   }
 ]
