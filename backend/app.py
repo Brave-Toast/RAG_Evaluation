@@ -253,7 +253,17 @@ def perform_vector_retrieval(
                     return compute_dense_embedding(text, embedding_provider).tolist()
             
             lc_docs = [Document(page_content=d.text, metadata={"title": d.title, "index": idx}) for idx, d in enumerate(docs)]
-            db = Chroma.from_documents(lc_docs, CustomDenseEmbeddings())
+
+            # Give this call its own isolated collection so switching embedding
+            # models between requests can't collide with a previous dimension.
+            # Without a unique collection_name, Chroma.from_documents() reuses
+            # a shared default in-memory collection across every call.
+            unique_collection_name = f"eval_{uuid.uuid4().hex}"
+            db = Chroma.from_documents(
+                lc_docs,
+                CustomDenseEmbeddings(),
+                collection_name=unique_collection_name
+            )
             
             result = []
             if search_type.lower() == "mmr":
@@ -271,6 +281,12 @@ def perform_vector_retrieval(
                     # Normalize relevance score within [0, 1] range
                     score_val = max(0.0, min(1.0, score_val))
                     result.append(ContextDoc(title=title, text=doc.page_content, score=round(score_val, 4)))
+
+            # Clean up this temporary collection now that we've read what we need
+            try:
+                db.delete_collection()
+            except Exception as cleanup_err:
+                print(f"Notice: could not clean up temp collection '{unique_collection_name}': {cleanup_err}")
                     
             if result:
                 return result
