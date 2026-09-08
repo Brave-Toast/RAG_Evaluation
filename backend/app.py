@@ -146,7 +146,63 @@ class EvaluationResponse(BaseModel):
 
 
 DATASET_PATH = pathlib.Path(__file__).parent / "hotpotqa_dataset.json"
+STAGE_LOG_PATH = pathlib.Path(__file__).parent / "stage_run_logs.jsonl"
 
+
+def log_stage_run(
+    req: "EvaluationRequest",
+    baseline_query: str,
+    perturbed_query: str,
+    baseline_contexts: List[ContextDoc],
+    perturbed_contexts: List[ContextDoc],
+    baseline_answer: str,
+    perturbed_answer: str,
+    metrics: "MetricTelemetry",
+    warning: Optional[str] = None
+) -> None:
+    """
+    Appends a structured, stage-level record of this evaluation run to a JSONL log file.
+    Captures query, retrieval, and generation stage outputs separately so later analysis
+    can trace which pipeline stage a failure originated from (see RS-41).
+    """
+    import datetime
+    import uuid as uuid_module
+
+    record = {
+        "run_id": uuid_module.uuid4().hex,
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+        "question_id": req.question_id,
+        "perturbation_type": req.perturbation_type,
+        "typo_rate": req.typo_rate,
+        "embedding_provider": req.embedding_provider,
+        "search_type": req.search_type,
+        "top_k": req.top_k,
+        "llm_model": req.llm_model,
+        "query_stage": {
+            "original_query": baseline_query,
+            "perturbed_query": perturbed_query
+        },
+        "retrieval_stage": {
+            "baseline_contexts": [
+                {"title": c.title, "score": c.score} for c in baseline_contexts
+            ],
+            "perturbed_contexts": [
+                {"title": c.title, "score": c.score} for c in perturbed_contexts
+            ]
+        },
+        "generation_stage": {
+            "baseline_answer": baseline_answer,
+            "perturbed_answer": perturbed_answer
+        },
+        "metrics": metrics.model_dump(),
+        "warning": warning
+    }
+
+    try:
+        with open(STAGE_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"Notice: could not write stage log entry: {e}")
 
 def load_hotpotqa_dataset() -> List[Dict[str, Any]]:
     """Loads benchmark questions from hotpotqa_dataset.json."""
@@ -703,6 +759,17 @@ async def run_evaluation(req: EvaluationRequest):
         status_text=status_text,
         status_desc=status_desc
     )
+    log_stage_run(
+        req=req,
+        baseline_query=baseline_query,
+        perturbed_query=perturbed_query,
+        baseline_contexts=baseline_contexts,
+        perturbed_contexts=perturbed_contexts,
+        baseline_answer=baseline_answer,
+        perturbed_answer=perturbed_answer,
+        metrics=metrics,
+        warning=warning_combined
+    )
 
     return EvaluationResponse(
         baseline_query=baseline_query,
@@ -715,6 +782,7 @@ async def run_evaluation(req: EvaluationRequest):
         metrics=metrics,
         warning=warning_combined
     )
+    
 
 
 if __name__ == "__main__":
