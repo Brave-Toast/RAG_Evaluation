@@ -92,22 +92,24 @@ The dashboard will connect to `http://127.0.0.1:8000/api/health`, dynamically fe
 
 ## How to Use the Dashboard
 
-1. **Select a Benchmark Question**: Choose from 52 pre-loaded HotpotQA multi-hop questions or type a custom query.
-2. **Select a Static Perturbation Type**:
-   - **Spelling Typo Injection**: Swaps, drops, or substitutes characters based on the Typo Severity slider.
-   - **LLM Query Rephrase**: Rephrases the input question while maintaining exact intent.
-   - **Conflicting Context**: Injects synthetic counter-factual documents into the vector store.
-3. **Customize Modular Pipeline Components**:
-   - **Embedding Model**: `HuggingFace / all-MiniLM-L6-v2`.
-   - **Search Strategy**: `Similarity` or `MMR (Maximal Marginal Relevance)`.
-   - **Top-K Documents**: Set retrieved passage count (1 to 5).
-   - **LLM Provider**: Choose `Ollama / llama3`, `Ollama / mistral`, `Gemini 3 Flash`, or `Synthetic Benchmark LLM`.
-4. **Execute & Analyze Telemetry**: Click **Run Evaluation Pipeline** to view:
-   - Side-by-side comparative execution panels.
-   - Granular stage error telemetry bar (Query Shift, Rank Jaccard Overlap, Context Loss, Gen vs GT).
-   - Mathematical Error Amplification Factor.
-   - Status Classification (`Absorbed` / `Proportional` / `Amplified`).
-   - Benchmark history log and Chart.js error degradation tracking.
+1. Select a benchmark question and configure the embedding model, search strategy, Top-K, and generation provider.
+2. Select one or more of the **nine perturbations**: spelling errors, query rephrasing, emoji perturbation, conflicting context, evidence removal, irrelevant passages, fact alteration, passage shuffling, and truncation.
+   A single method from either group is sufficient; you do not need to select both a question change and a document change.
+3. Choose **Combined** to apply all selected methods to one variant, or **Separate comparisons** to run each method independently against one shared baseline.
+4. Adjust the selected methods' controls and optionally enter a random seed. The dashboard shows the number of answer generations before running.
+5. Click **Run Evaluation Pipeline**. Progress identifies the shared baseline and each variant. Use **Comparison result** to switch between variants.
+6. Inspect **Changes and skipped methods**, the final context supplied to generation, and the expandable retrieved passages before edits. Retrieved-document overlap measures retrieval output; context similarity measures final context after edits.
+7. Export history as JSON or CSV. Each variant includes its shared evaluation ID, settings, seed, full result, and generation source. Existing saved history remains readable.
+
+Question rephrasing, spelling errors, emoji perturbation, and conflicting candidate documents run before retrieval. The other five methods run after retrieval. Combined order is fixed: rephrase, spelling, emoji, conflicting context, retrieve, remove evidence, alter facts, truncate, add distractors, shuffle, generate.
+
+**Emoji perturbation:** choose **Insert emojis**, **Encode words and dates**, or **Insert + encode**. Examples include `before → b4️⃣`, `great → gr8️⃣`, and `2026 → 2️⃣0️⃣2️⃣6️⃣`. Adjust the maximum edit count and insertion position. The transformed question and exact replacements are recorded in the comparison result, history, and exports; word encodings can introduce ambiguity.
+
+**Evidence removal:** the bundled dataset has no supporting-document annotations, so results explicitly report the fallback: remove highest-ranked passages. The dataset and stored database are unchanged.
+
+**Synthetic mode:** answers are scripted from the ground truth; use it to verify the workflow, not to measure model resilience. Generation fallback and rule-based rephrasing warnings appear in the results. Seeds reproduce random transformations, not LLM responses.
+
+See [Perturbation experiments](docs/PERTURBATIONS.md) for settings, API examples, interpretation, and tests.
 
 ---
 

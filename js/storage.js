@@ -11,7 +11,8 @@ const STORAGE_KEY = 'rag_evaluation_benchmark_history';
 export function loadHistoryFromStorage() {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        return stored ? JSON.parse(stored) : [];
+        const history = stored ? JSON.parse(stored) : [];
+        return Array.isArray(history) ? history : [];
     } catch (e) {
         console.warn("Failed to load history from localStorage:", e);
         return [];
@@ -62,23 +63,23 @@ export function exportHistoryJSON(history) {
  */
 export function exportHistoryCSV(history) {
     if (!history || history.length === 0) return;
-
-    const headers = ["Run ID", "Perturbation Type", "Retrieval Cosine Sim", "Generation Cosine Sim", "Amplification Factor", "Status"];
-    const rows = history.map(h => [
-        h.id,
-        `"${h.type}"`,
-        h.retrievalSim,
-        h.generationSim,
-        h.amplificationFactor || 'N/A',
-        `"${h.status}"`
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", 'data:text/csv;charset=utf-8,' + encodeURIComponent(historyCSV(history)));
     link.setAttribute("download", `rag_evaluation_history_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
+}
+
+export function historyCSV(history) {
+    const headers = ['Run ID', 'Perturbation Type', 'Final Context Cosine Sim', 'Generation Cosine Sim',
+        'Amplification Factor', 'Status', 'Evaluation ID', 'Variant ID', 'Mode', 'Selected Methods',
+        'Variant Methods', 'Settings', 'Seed', 'Question ID', 'Embedding Provider', 'LLM Model',
+        'Search Type', 'Top K', 'Result JSON'];
+    const rows = history.map(h => [h.id, h.type, h.retrievalSim, h.generationSim,
+        h.amplificationFactor ?? 'N/A', h.status, h.evaluationId, h.variantId, h.mode,
+        h.selectedMethods, h.methods, h.settings, h.seed, h.questionId, h.embeddingProvider,
+        h.llmModel, h.searchType, h.topK, h.result]);
+    const cell = value => '"' + (typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value ?? '')).replaceAll('"', '""') + '"';
+    return [headers, ...rows].map(row => row.map(cell).join(',')).join('\r\n');
 }

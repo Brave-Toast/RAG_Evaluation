@@ -90,42 +90,98 @@
                 <hr class="border-slate-800">
 
                 <!-- Perturbation Module Settings -->
-                <div>
-                    <label class="block text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">
-                        <i class="fa-solid fa-bolt mr-1"></i> 2. Static Perturbation Type
-                    </label>
-                    <div class="space-y-2">
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 cursor-pointer">
-                            <input type="radio" name="perturbation-type" value="spelling" checked class="text-indigo-600 focus:ring-indigo-500">
-                            <div class="ml-2.5">
-                                <span class="block text-xs font-semibold text-white">Spelling Typo Injection</span>
-                                <span class="block text-[10px] text-slate-400">Random swaps, drops & char subs</span>
-                            </div>
+                <div id="perturbation-controls" class="space-y-3">
+                    <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-wider">2. Perturbations</h2>
+                    <p class="text-[11px] text-slate-300">Select any one or more methods. Question changes and document changes can each run on their own.</p>
+                    <label class="block text-xs text-slate-300" for="evaluation-mode">Evaluation mode</label>
+                    <select id="evaluation-mode" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                        <option value="combined">Combined</option>
+                        <option value="separate">Separate comparisons</option>
+                    </select>
+                    <fieldset class="space-y-2"><legend class="text-xs text-slate-400 mb-2">Question changes (before retrieval)</legend>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="spelling" checked class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Spelling errors</span><span class="block text-[10px] text-slate-400">Random swaps, drops and substitutions</span></span>
                         </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 cursor-pointer">
-                            <input type="radio" name="perturbation-type" value="rephrase" class="text-indigo-600 focus:ring-indigo-500">
-                            <div class="ml-2.5">
-                                <span class="block text-xs font-semibold text-white">LLM Query Rephrase</span>
-                                <span class="block text-[10px] text-slate-400">Semantic rephrasing via LLM</span>
-                            </div>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="rephrase" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Query rephrasing</span><span class="block text-[10px] text-slate-400">Reword the question using the selected model</span></span>
                         </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 cursor-pointer">
-                            <input type="radio" name="perturbation-type" value="conflict" class="text-indigo-600 focus:ring-indigo-500">
-                            <div class="ml-2.5">
-                                <span class="block text-xs font-semibold text-white">Conflicting Context</span>
-                                <span class="block text-[10px] text-slate-400">Inject conflicting docs into ChromaDB</span>
-                            </div>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="emoji" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Emoji perturbation</span><span class="block text-[10px] text-slate-400">Insert symbols or encode words and dates</span></span>
                         </label>
+                    </fieldset>
+                    <fieldset class="space-y-2"><legend class="text-xs text-slate-400 mb-2">Document changes</legend>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="conflict" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Conflicting context</span><span class="block text-[10px] text-slate-400">Add a contradictory candidate before retrieval</span></span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="remove_evidence" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Remove supporting evidence</span><span class="block text-[10px] text-slate-400">After retrieval; falls back to highest-ranked passage</span></span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="irrelevant" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Add irrelevant passages</span><span class="block text-[10px] text-slate-400">After retrieval; sample other benchmark questions</span></span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="alter_facts" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Alter facts</span><span class="block text-[10px] text-slate-400">After retrieval; replace numbers and date tokens</span></span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="shuffle" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Shuffle passage order</span><span class="block text-[10px] text-slate-400">After retrieval; preserve passage contents</span></span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="truncate" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Truncate passages</span><span class="block text-[10px] text-slate-400">After retrieval; retain a percentage of text</span></span>
+                        </label>
+                    </fieldset>
+                    <div data-method-settings="spelling">
+                        <label for="typo-rate-slider" class="text-xs text-slate-300">Typo severity: <span id="typo-rate-val">25%</span></label>
+                        <input type="range" id="typo-rate-slider" min="0" max="100" step="5" value="25" class="w-full accent-indigo-500">
                     </div>
-
-                    <!-- Typo rate slider -->
-                    <div id="typo-rate-container" class="mt-3">
-                        <div class="flex justify-between text-xs text-slate-400 mb-1">
-                            <span>Typo Severity Rate</span>
-                            <span id="typo-rate-val" class="text-indigo-400 font-bold">25%</span>
+                    <div data-method-settings="emoji" class="space-y-2" hidden>
+                        <label for="emoji-style" class="block text-xs text-slate-300">Emoji style</label>
+                        <select id="emoji-style" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                            <option value="insert">Insert emojis</option>
+                            <option value="substitute">Encode words and dates</option>
+                            <option value="mixed" selected>Insert + encode</option>
+                        </select>
+                        <label for="emoji-count" class="block text-xs text-slate-300">Maximum emoji edits</label>
+                        <input id="emoji-count" type="number" value="3" min="1" max="20" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                        <div id="emoji-position-container">
+                            <label for="emoji-position" class="block text-xs text-slate-300 mb-1">Insertion position</label>
+                            <select id="emoji-position" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                                <option value="prefix">Beginning</option>
+                                <option value="suffix" selected>End</option>
+                                <option value="between_words">Between words</option>
+                            </select>
                         </div>
-                        <input type="range" id="typo-rate-slider" min="10" max="60" step="5" value="25" class="w-full accent-indigo-500 bg-slate-800">
+                        <p class="text-[10px] text-slate-400">before → b4️⃣ · great → gr8️⃣ · 2026 → 2️⃣0️⃣2️⃣6️⃣. One word/date replacement counts as one edit. Word encodings can introduce ambiguity.</p>
                     </div>
+                    <div data-method-settings="remove_evidence" hidden>
+                        <label for="remove-count" class="block text-xs text-slate-300 mb-1">Passages to remove</label>
+                        <input id="remove-count" type="number" value="1" min="1" max="5" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    </div>
+                    <div data-method-settings="irrelevant" hidden>
+                        <label for="irrelevant-count" class="block text-xs text-slate-300 mb-1">Passages to add</label>
+                        <input id="irrelevant-count" type="number" value="1" min="1" max="5" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    </div>
+                    <div data-method-settings="alter_facts" hidden>
+                        <label for="fact-count" class="block text-xs text-slate-300 mb-1">Number/date replacements</label>
+                        <input id="fact-count" type="number" value="1" min="1" max="20" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    </div>
+                    <div data-method-settings="truncate" hidden>
+                        <label for="retain-percent" class="block text-xs text-slate-300 mb-1">Text retained (%)</label>
+                        <input id="retain-percent" type="number" value="50" min="1" max="100" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    </div>
+                    <label for="perturbation-seed" class="block text-xs text-slate-300">Random seed (optional)</label>
+                    <input id="perturbation-seed" type="number" min="0" max="2147483647" step="1" placeholder="Automatic" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    <p class="text-[10px] text-slate-400">Seeds repeat random edits, not model responses.</p>
+                    <p id="perturbation-order" class="text-[11px] text-indigo-300"></p>
+                    <p id="evaluation-workload" class="text-[11px] text-slate-300" aria-live="polite"></p>
                 </div>
 
                 <hr class="border-slate-800">
@@ -188,6 +244,20 @@
         <!-- Main Dashboard Content Area -->
         <main class="flex-1 overflow-y-auto p-6 space-y-6">
 
+            <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2" aria-label="Evaluation results">
+                <p id="evaluation-progress" role="status" aria-live="polite" class="text-sm text-indigo-300">Ready</p>
+                <p id="evaluation-error" role="alert" class="text-sm text-rose-300" hidden></p>
+                <label for="variant-select" class="block text-xs text-slate-300">Comparison result</label>
+                <select id="variant-select" disabled class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white"></select>
+                <p id="experiment-summary" class="text-xs text-slate-400"></p>
+                <p id="generation-sources" class="text-xs text-amber-300"></p>
+                <p id="evaluation-warning" class="text-xs text-amber-300" hidden></p>
+                <details>
+                    <summary class="text-xs text-indigo-300 cursor-pointer">Changes and skipped methods</summary>
+                    <div id="perturbation-changes" class="space-y-2 mt-2"></div>
+                </details>
+            </section>
+
             <!-- Evaluation Metrics Top Overview Grid -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 
@@ -233,7 +303,7 @@
                         <span id="metric-amplification" class="text-2xl font-black text-amber-400">0.00x</span>
                         <span class="text-[10px] text-slate-400">&lt; 1.0 = Absorbed</span>
                     </div>
-                    <p class="text-[11px] text-slate-400 mt-1">Ratio of generation error loss to retrieval error loss.</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Ratio of answer change to final-context change.</p>
                 </div>
 
                 <!-- Metric Card 4: Propagation Status -->
@@ -266,12 +336,12 @@
                         <span class="text-[9px] text-slate-500 block">CosineSim(E(Q_base), E(Q_pert))</span>
                     </div>
                     <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                        <span class="text-[10px] text-slate-400 block font-semibold">Retrieval Rank Shift</span>
+                        <span class="text-[10px] text-slate-400 block font-semibold">Retrieved Document Overlap</span>
                         <span id="telemetry-rank-jaccard" class="text-base font-bold text-indigo-300">1.0000</span>
-                        <span class="text-[9px] text-slate-500 block">Top-K Jaccard Doc Overlap</span>
+                        <span class="text-[9px] text-slate-500 block">Jaccard overlap before context edits</span>
                     </div>
                     <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                        <span class="text-[10px] text-slate-400 block font-semibold">Context Construction Loss</span>
+                        <span class="text-[10px] text-slate-400 block font-semibold">Final Context Similarity</span>
                         <span id="telemetry-context-loss" class="text-base font-bold text-indigo-300">1.0000</span>
                         <span class="text-[9px] text-slate-500 block">CosineSim(E(C_base), E(C_pert))</span>
                     </div>
@@ -351,12 +421,17 @@
                         <!-- Retrieved Passages -->
                         <div>
                             <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                                Perturbed Retrieved Contexts (<span id="perturbed-doc-count">2</span>)
+                                Final Context Supplied to Generation (<span id="perturbed-doc-count">2</span>)
                             </span>
                             <div id="perturbed-contexts-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
                                 <!-- Dynamic Context Cards -->
                             </div>
                         </div>
+
+                        <details>
+                            <summary class="text-xs text-indigo-300 cursor-pointer">Retrieved passages before context edits</summary>
+                            <div id="perturbed-retrieved-list" class="space-y-2 max-h-48 overflow-y-auto mt-2"></div>
+                        </details>
 
                         <!-- LLM Answer -->
                         <div class="pt-2">

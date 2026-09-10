@@ -25,9 +25,6 @@ except ImportError:
 try:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 except ImportError:
-    try:
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
-    except ImportError:
         # Minimal recursive character text splitter fallback
         class RecursiveCharacterTextSplitter:
             def __init__(self, chunk_size: int = 200, chunk_overlap: int = 50, separators: Optional[List[str]] = None):
@@ -193,58 +190,45 @@ def get_embedding_model(model_name: str = DEFAULT_EMBEDDING_MODEL):
     return embedding_model
 
 
-def store_chunks(
-    chunks: List[str], 
-    embedding_model, 
-    persist_directory: Optional[str] = str(DEFAULT_PERSIST_DIR),
-    clean_existing: bool = True
-):
-    """
-    Stores document chunks and computed embeddings into ChromaDB.
-    
-    Args:
-        chunks: List of chunk texts.
-        embedding_model: Embedding model object.
-        persist_directory: Local directory for ChromaDB storage.
-        clean_existing: Whether to clear previous database directory to prevent ID conflicts.
-        
-    Returns:
-        Chroma vector store instance.
-    """
+def store_chunks(chunks: List[str], embedding_model, persist_directory: Optional[str]=str(DEFAULT_PERSIST_DIR),clean_exisitng: bool=True):
     if not CHROMA_AVAILABLE:
-        raise ImportError(
-            "ChromaDB / LangChain Chroma integration is not installed. "
-            "Install via: pip install chromadb langchain-chroma"
-        )
-        
-    if clean_existing and persist_directory and os.path.exists(persist_directory):
-        print(f"Clearing existing ChromaDB directory at '{persist_directory}'...")
-        try:
-            shutil.rmtree(persist_directory)
-        except Exception as e:
-            print(f"Notice: Could not remove directory {persist_directory}: {e}")
-
-    unique_ids = [str(i) for i in range(len(chunks))]
-    print(f"Writing {len(chunks)} chunks to ChromaDB at '{persist_directory}'...")
+        raise ImportError( "ChromaDB / LangChain Chroma integration is not installed.\nInstall via: pip install chromadb langchain-chroma")
+    #fix is clearing chroma's in-memory client cache so system can not keep reusing a clinet pointed to old dimension
+    try:
+        import chromadb
+        chromadb.api.client.SharedSystemClient.clear_system_cache()
+    except Exception as e:
+        print(f"Notice: could not clear Chroma System cache: {e}")
     
+    if clean_exisitng and persist_directory and os.path.exists(persist_directory):
+        print(f"Clearing existing ChromaDB directory at '{persist_directory}'")
+        import time
+        for attempt in range(3):
+            try:
+                shutil.rmtree(persist_directory)
+                break
+            except Exception as e:
+                if attempt==2:
+                    raise RuntimeError(f"Could not remove '{persist_directory}' after 3 attempts.\nPlease restart the Jupyter kernel and retry): {e}")
+                print(f"Retrying attmept {attempt+1}/3: directory issue, waiting......")
+                time.sleep(1)
+
+    unique_ids=[str(i) for i in range(len(chunks))]
+    print(f"Writing {len(chunks)} chunks to ChromaDB at '{persist_directory}'")
+
     if persist_directory:
-        vector_storage = Chroma.from_texts(
-            texts=chunks,
-            embedding=embedding_model,
-            persist_directory=str(persist_directory),
-            ids=unique_ids
-        )
+        vector_storage=Chroma.from_texts(texts=chunks, embedding=embedding_model, persist_directory=str(persist_directory), ids=unique_ids)
     else:
-        vector_storage = Chroma.from_texts(
-            texts=chunks,
-            embedding=embedding_model,
-            ids=unique_ids
-        )
+        vector_storage=Chroma.from_texts(texts=chunks,embedding=embedding_model,ids=unique_ids)
+    #verificvation for the fix now:
+    actual_count=vector_storage._collection.count()
+    if actual_count!=len(chunks):
+        raise RuntimeError(f"Mismatch after ingestion: expected {len(chunks)} chunks.\nCollection has {actual_count}. Old data may not have cleared.")
+
+    print(f"Verified: {actual_count} chunks in collection.")
         
     print("ChromaDB vector store populated successfully.")
     return vector_storage
-
-
 def extract_and_export_benchmark_json(
     data, 
     num_rows: int = 50, 
