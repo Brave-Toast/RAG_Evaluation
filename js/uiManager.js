@@ -140,16 +140,16 @@ export function initChart() {
                 {
                     label: 'Retrieval Cosine Sim',
                     data: [1.0],
-                    backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                    borderColor: 'rgba(99, 102, 241, 1)',
+                    backgroundColor: 'rgba(45, 191, 174, 0.7)',
+                    borderColor: 'rgba(45, 191, 174, 1)',
                     borderWidth: 1,
                     borderRadius: 6
                 },
                 {
                     label: 'Generation Cosine Sim',
                     data: [1.0],
-                    backgroundColor: 'rgba(167, 139, 250, 0.7)',
-                    borderColor: 'rgba(167, 139, 250, 1)',
+                    backgroundColor: 'rgba(209, 150, 42, 0.7)',
+                    borderColor: 'rgba(209, 150, 42, 1)',
                     borderWidth: 1,
                     borderRadius: 6
                 }
