@@ -43,6 +43,12 @@ app.add_middleware(
 
 FRONTEND_DIR = pathlib.Path(__file__).parent.parent
 
+
+from dotenv import load_dotenv
+load_dotenv()
+# OpenAI API key is loaded from the .env file. Every team mmeber if running locally, needs ot create thier own .env file in the smae direcotry as app.py and set the key as OPENAI_API_KEY=sk-proj-yourrealkeyhere 
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "YOUR_OPENAI_API_KEY_HERE")
+
 @app.get("/")
 def read_root():
     """Serves the frontend dashboard SPA."""
@@ -245,7 +251,35 @@ def load_hotpotqa_dataset() -> List[Dict[str, Any]]:
             return json.load(f)
     return []
 
-
+Ollama_Confirmed_Models: set=set()
+def ensure_ollama_model_pulled(model_name:str)->bool:
+    #checking if ollama model is available locally
+    if model_name in Ollama_Confirmed_Models:
+        return True
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            # quickly trying a embedidng call for checking if model exists
+            res=client.post("http://localhost:11434/api/embeddings", json={"model": model_name, "prompt": "ping"})
+            if res.status_code==200:
+                Ollama_Confirmed_Models.add(model_name)
+                return True
+    except Exception:
+        pass
+    # if  not found then pull the model 
+    print(f"Model '{model_name}' not found locally, pulling from ollama")
+    try:
+        with httpx.Client(timeout=300.0) as client:
+            res=client.post("http://localhost:11434/api/pull", json={"name": model_name, "stream": False})
+            if res.status_code==200:
+                print(f"Pulled '{model_name}' successfully.") 
+                Ollama_Confirmed_Models.add(model_name)
+                return True
+            else:
+                 print(f"Pull failed for '{model_name}': HTTP {res.status_code}")
+    except Exception as e:
+        print(f"Pull error for '{model_name}': {e}")
+    return False
+          
 def compute_dense_embedding(text: str, provider: str = "sentence-transformers/all-mpnet-base-v2") -> np.ndarray:
     """Computes a dense vector embedding using Ollama, SentenceTransformers, or fallback encoder."""
     if not text or not text.strip():
@@ -254,15 +288,40 @@ def compute_dense_embedding(text: str, provider: str = "sentence-transformers/al
     # 1. Ollama local embeddings
     if provider and provider.startswith("ollama/"):
         model_name = provider.replace("ollama/", "")
-        try:
-            with httpx.Client(timeout=5.0) as client:
-                res = client.post("http://localhost:11434/api/embeddings", json={"model": model_name, "prompt": text})
-                if res.status_code == 200:
-                    emb = res.json().get("embedding")
-                    if emb:
-                        return np.array(emb, dtype=np.float32)
-        except Exception:
-            pass  # Fallback to SentenceTransformers
+        if ensure_ollama_model_pulled(model_name):
+            try:
+                with httpx.Client(timeout=300.0) as client:
+                    res = client.post("http://localhost:11434/api/embeddings", json={"model": model_name, "prompt": text})
+                    if res.status_code == 200:
+                        emb = res.json().get("embedding")
+                        if emb:
+                            return np.array(emb, dtype=np.float32)
+            except Exception as e:
+                print(f"Ollama embeddings error for '{model_name}': {e}")
+        else:
+            print(f"Notice: could not use ollama model '{model_name}', falling back.")
+# 1b. OpenAI embeddings
+    if provider and provider.startswith("openai/"):
+        model_name = provider.replace("openai/", "")
+        if OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE":
+            try:
+                with httpx.Client(timeout=10.0) as client:
+                    res = client.post(
+                        "https://api.openai.com/v1/embeddings",
+                        headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                        json={"model": model_name, "input": text}
+                    )
+                    if res.status_code == 200:
+                        emb = res.json().get("data", [{}])[0].get("embedding")
+                        if emb:
+                            return np.array(emb, dtype=np.float32)
+                    else:
+                        print(f"OpenAI embeddings HTTP {res.status_code}: {res.text[:200]}")
+            except Exception as e:
+                print(f"OpenAI embeddings error: {e}")
+        else:
+            print("Notice: OPENAI_API_KEY not set, falling back.")
+
             
     # 2. SentenceTransformer local embeddings
     model_key = provider.replace("huggingface/", "")
@@ -454,34 +513,42 @@ async def generate_llm_answer(
     if model_choice.startswith("ollama/") or model_choice in ["qwen3.5:9b", "llama3", "mistral", "qwen2.5:7b"]:
         model_name = model_choice.replace("ollama/", "")
         ollama_url = "http://localhost:11434/api/generate"
-        try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
-                res = await client.post(
-                    ollama_url,
-                    json={
-                        "model": model_name,
-                        "prompt": f"{system_prompt}\n\n{prompt}",
-                        "stream": False,
-                        "options": {
-                            "num_predict": 8000
+        if ensure_ollama_model_pulled(model_name):
+            try:
+                async with httpx.AsyncClient(timeout=300.0) as client:
+                    res = await client.post(
+                        ollama_url,
+                        json={
+                            "model": model_name,
+                            "prompt": f"{system_prompt}\n\n{prompt}",
+                            "stream": False,
+                            "options": {
+                                "num_predict": 8000
+                            }
                         }
-                    }
-                )
-                if res.status_code == 200:
-                    data = res.json()
-                    answer = data.get("response", "").strip()
-                    if answer:
-                        return answer, None
-                else:
-                    warning_msg = f"Ollama HTTP {res.status_code} for '{model_name}'. Used synthetic fallback."
-        except httpx.ConnectError:
-            warning_msg = f"Ollama service offline (could not reach localhost:11434 for model '{model_name}'). Used synthetic fallback."
-            print(warning_msg)
-        except httpx.TimeoutException:
-            warning_msg = f"Ollama request timed out for model '{model_name}'. Used synthetic fallback."
-            print(warning_msg)
-        except Exception as e:
-            warning_msg = f"Ollama local error for '{model_name}': {str(e)}. Used synthetic fallback."
+                    )
+                    if res.status_code == 200:
+                        data = res.json()
+                        answer = data.get("response", "").strip()
+                        if answer:
+                            return answer, None
+                        else:
+                            warning_msg = f"Ollama returned empty response for '{model_name}'. Raw data: {data}"
+                            print(warning_msg)
+                    else:
+                        warning_msg = f"Ollama HTTP {res.status_code} for '{model_name}'. Used synthetic fallback."
+                        print(warning_msg)
+            except httpx.ConnectError:
+                warning_msg = f"Ollama service offline (could not reach localhost:11434 for model '{model_name}'). Used synthetic fallback."
+                print(warning_msg)
+            except httpx.TimeoutException:
+                warning_msg = f"Ollama request timed out for model '{model_name}'. Used synthetic fallback."
+                print(warning_msg)
+            except Exception as e:
+                warning_msg = f"Ollama local error for '{model_name}': {str(e)}. Used synthetic fallback."
+                print(warning_msg)
+        else:
+            warning_msg = f"Could not pull ollama model '{model_name}'. Used synthetic fallback."
             print(warning_msg)
 
     # 2. Gemini Cloud API Integration
@@ -514,8 +581,6 @@ async def generate_llm_answer(
             return f"Conflicting sources refute that '{ground_truth}' is accurate.", warning_msg
         else:
             return ground_truth, warning_msg
-
-
 async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key: Optional[str] = None) -> tuple[str, Optional[str]]:
     """
     Generates a semantic rephrase of the input query for the perturbed test pipeline.
@@ -530,7 +595,7 @@ async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key:
         model_name = model_choice.replace("ollama/", "")
         ollama_url = "http://localhost:11434/api/generate"
         try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
+            async with httpx.AsyncClient(timeout=300.0) as client:
                 res = await client.post(
                     ollama_url,
                     json={
@@ -636,7 +701,8 @@ def health_check():
         "supported_embedding_models": [
             "sentence-transformers/all-mpnet-base-v2",
             "sentence-transformers/all-MiniLM-L6-v2",
-            "ollama/nomic-embed-text"
+            "ollama/nomic-embed-text",
+            "openai/text-embedding-3-small"
         ],
         "supported_llm_models": [
             "ollama/qwen3.5:9b",
@@ -646,7 +712,8 @@ def health_check():
             "synthetic-evaluator"
         ],
         "vector_store": "ChromaDB (LangChain)" if CHROMA_AVAILABLE else "Dense Vector Distance",
-        "ollama_support": True
+        "ollama_support": True,
+        "openai_configured": bool(OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE")
     }
 
 

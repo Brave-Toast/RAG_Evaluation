@@ -17,6 +17,7 @@ let currentQueryObj = HOTPOTQA_DATASET[0];
 window.addEventListener('DOMContentLoaded', async () => {
     // 1. Perform backend health check & update header status badge
     updateHeaderStatusBadge();
+    updateEmbeddingProviderAvailability();
     
     // 2. Fetch dynamic 50+ HotpotQA questions dataset from FastAPI backend
     await loadDatasetFromBackend();
@@ -54,6 +55,20 @@ async function updateHeaderStatusBadge() {
             <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
             <span class="text-slate-300 font-medium">Backend Offline (Simulated Fallback)</span>
         `;
+    }
+}
+
+async function updateEmbeddingProviderAvailability() {
+    const health = await checkBackendHealth();
+    const openaiOption = document.querySelector('#embedding-provider option[value="openai/text-embedding-3-small"]');
+    if (!openaiOption) return;
+
+    if (health && health.openai_configured) {
+        openaiOption.disabled = false;
+        openaiOption.textContent = "OpenAI / text-embedding-3-small";
+    } else {
+        openaiOption.disabled = true;
+        openaiOption.textContent = "OpenAI / text-embedding-3-small (API Key Required)";
     }
 }
 
