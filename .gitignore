@@ -20,3 +20,10 @@ ENV/
 Thumbs.db
 .vscode/
 .idea/
+
+# Runtime-generated data (local to each machine)
+backend/Chroma_DB/
+backend/stage_run_logs.jsonl
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
