@@ -234,7 +234,11 @@ function renderVariant(result) {
         retrieval_rank_shift_jaccard: metrics.retrieval_rank_shift_jaccard,
         context_construction_loss: metrics.context_construction_loss,
         generation_vs_gt_baseline: metrics.generation_vs_gt_baseline,
-        generation_vs_gt_perturbed: metrics.generation_vs_gt_perturbed
+        generation_vs_gt_perturbed: metrics.generation_vs_gt_perturbed,
+        context_recall_perturbed: metrics.context_recall_perturbed,
+        answer_f1_perturbed: metrics.answer_f1_perturbed,
+        failure_attribution: metrics.failure_attribution,
+        failure_root_cause: metrics.failure_root_cause
     });
 
 }
@@ -271,6 +275,7 @@ export async function executeEvaluation() {
             baselineQuery: customQuery || currentQueryObj.question,
             groundTruth: currentQueryObj.ground_truth,
             contexts: currentQueryObj.contexts,
+            goldTitles: currentQueryObj.gold_titles || [],
             supportingTitles: customQuery ? null : currentQueryObj.supporting_titles,
             perturbationTypes: methods,
             mode: document.getElementById('evaluation-mode').value,
@@ -317,6 +322,10 @@ export async function executeEvaluation() {
                 amplificationFactor: variant.metrics.amplification_factor,
                 statusCategory: variant.metrics.status_category,
                 status: variant.metrics.status_text,
+                failureAttribution: variant.metrics.failure_attribution,
+                failureRootCause: variant.metrics.failure_root_cause,
+                contextRecall: variant.metrics.context_recall_perturbed,
+                answerF1: variant.metrics.answer_f1_perturbed,
                 evaluationId: result.evaluation_id,
                 variantId: variant.variant_id,
                 mode: result.mode,

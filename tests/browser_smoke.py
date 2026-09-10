@@ -217,7 +217,7 @@ try:
         return {csv};
     })()''')
     rows = list(csv.reader(io.StringIO(checks['csv'])))
-    assert len(rows[0]) == len(rows[1]) == 19
+    assert len(rows[0]) == len(rows[1]) == 23
     assert json.loads(rows[1][-1])['answer'] == 'A "quote", and\na newline'
     assert json.loads(rows[1][-1])['emoji'] == 'b4️⃣ 2️⃣0️⃣2️⃣6️⃣'
     print('PASS: legacy history, CSV round-trip/zeroes, chunked UTF-8, request payload and incomplete stream errors', flush=True)

@@ -9,6 +9,7 @@ export let HOTPOTQA_DATASET = [
         id: "1",
         question: "Which magazine was started first, Arthur's Magazine or First for Women?",
         ground_truth: "Arthur's Magazine",
+        gold_titles: ["Arthur's Magazine", "First for Women"],
         contexts: [
             { title: "Arthur's Magazine", text: "Arthur's Magazine (1844–1846) was an American literary magazine published in Philadelphia in the 19th century." },
             { title: "First for Women", text: "First for Women is a woman's magazine published by Bauer Media Group in the USA. The magazine was started in 1989." },
@@ -19,6 +20,7 @@ export let HOTPOTQA_DATASET = [
         id: "2",
         question: "Were Scott Derrickson and Rupert Wyatt both born in the same decade?",
         ground_truth: "No, Scott Derrickson was born in 1966 and Rupert Wyatt in 1972.",
+        gold_titles: ["Scott Derrickson", "Rupert Wyatt"],
         contexts: [
             { title: "Scott Derrickson", text: "Scott Derrickson (born July 16, 1966) is an American director, screenwriter and producer. He directed Doctor Strange." },
             { title: "Rupert Wyatt", text: "Rupert Wyatt (born 26 October 1972) is an English film director, screenwriter, and producer who directed Rise of the Planet of the Apes." },
@@ -29,6 +31,7 @@ export let HOTPOTQA_DATASET = [
         id: "3",
         question: "What clean energy source produces power at the Hoover Dam?",
         ground_truth: "Hydroelectric power",
+        gold_titles: ["Hoover Dam"],
         contexts: [
             { title: "Hoover Dam", text: "Hoover Dam is a concrete black-canyon arch-gravity dam on the Colorado River, constructing Lake Mead. Its plant generates massive hydroelectric power." },
             { title: "Clean Energy Overview", text: "Hydroelectric energy utilizes flowing water to spin turbines, producing renewable zero-emission electricity." },

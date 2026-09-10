@@ -22,9 +22,15 @@ from fastapi.responses import FileResponse, StreamingResponse
 if __package__:
     from .perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
                                 method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis)
+    from .isolation_metrics import (calculate_token_f1, calculate_exact_match,
+                                    calculate_context_recall, calculate_context_precision,
+                                    diagnose_failure)
 else:
     from perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis)
+    from isolation_metrics import (calculate_token_f1, calculate_exact_match,
+                                  calculate_context_recall, calculate_context_precision,
+                                  diagnose_failure)
 
 app = FastAPI(
     title="Modular RAG Evaluation & Perturbation Backend API",
@@ -117,6 +123,7 @@ class EvaluationRequest(BaseModel):
     baseline_query: str
     ground_truth: str
     contexts: List[ContextDoc]
+    gold_titles: Optional[List[str]] = Field(default_factory=list)
     perturbation_type: Method = "spelling"  # Legacy single-method requests remain supported.
     perturbation_types: Optional[List[Method]] = Field(default=None, min_length=1, max_length=9)
     mode: Literal["combined", "separate"] = "combined"
@@ -150,6 +157,14 @@ class MetricTelemetry(BaseModel):
     status_category: str
     status_text: str
     status_desc: str
+    context_recall_baseline: float
+    context_recall_perturbed: float
+    answer_f1_baseline: float
+    answer_f1_perturbed: float
+    failure_attribution: str
+    failure_root_cause: str
+    context_precision_baseline: Optional[float] = 1.0
+    context_precision_perturbed: Optional[float] = 1.0
 
 
 class VariantResult(BaseModel):
@@ -196,7 +211,8 @@ def log_stage_run(
     perturbed_answer: str,
     metrics: "MetricTelemetry",
     warning: Optional[str] = None,
-    experiment: Optional[Dict[str, Any]] = None
+    experiment: Optional[Dict[str, Any]] = None,
+    gold_titles: Optional[List[str]] = None
 ) -> None:
     """
     Appends a structured, stage-level record of this evaluation run to a JSONL log file.
@@ -206,6 +222,7 @@ def log_stage_run(
     import datetime
     import uuid as uuid_module
 
+    resolved_gold = gold_titles if gold_titles is not None else (req.gold_titles or [])
     record = {
         "run_id": uuid_module.uuid4().hex,
         "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
@@ -216,6 +233,10 @@ def log_stage_run(
         "search_type": req.search_type,
         "top_k": req.top_k,
         "llm_model": req.llm_model,
+        "gold_titles": resolved_gold,
+        "context_recall": metrics.context_recall_perturbed,
+        "failure_attribution": metrics.failure_attribution,
+        "failure_root_cause": metrics.failure_root_cause,
         "query_stage": {
             "original_query": baseline_query,
             "perturbed_query": perturbed_query
@@ -747,8 +768,28 @@ def trigger_ingestion(req: Optional[IngestRequest] = None):
 
 def evaluate_metrics(req, baseline_query, perturbed_query, baseline_contexts,
                      perturbed_contexts, perturbed_retrieved_contexts,
-                     baseline_answer, perturbed_answer):
+                     baseline_answer, perturbed_answer,
+                     base_diag: Optional[Dict[str, Any]] = None,
+                     pert_diag: Optional[Dict[str, Any]] = None,
+                     gold_titles: Optional[List[str]] = None):
     ground_truth = req.ground_truth
+    resolved_gold = gold_titles if gold_titles is not None else (req.gold_titles or [])
+
+    if base_diag is None:
+        base_diag = diagnose_failure(
+            retrieved_titles=[c.title for c in baseline_contexts],
+            gold_titles=resolved_gold,
+            generated_answer=baseline_answer,
+            ground_truth=ground_truth
+        )
+    if pert_diag is None:
+        pert_diag = diagnose_failure(
+            retrieved_titles=[c.title for c in perturbed_contexts],
+            gold_titles=resolved_gold,
+            generated_answer=perturbed_answer,
+            ground_truth=ground_truth
+        )
+
     # 4. Dense Vector Telemetry & Metric Calculations
     # A. Query Embedding Shift: CosineSim(E(Q_baseline), E(Q_perturbed))
     query_shift = compute_dense_cosine_similarity(baseline_query, perturbed_query, req.embedding_provider)
@@ -799,7 +840,15 @@ def evaluate_metrics(req, baseline_query, perturbed_query, baseline_contexts,
         amplification_factor=round(amplification_factor, 2),
         status_category=status_category,
         status_text=status_text,
-        status_desc=status_desc
+        status_desc=status_desc,
+        context_recall_baseline=base_diag["context_recall"],
+        context_recall_perturbed=pert_diag["context_recall"],
+        answer_f1_baseline=base_diag["answer_f1"],
+        answer_f1_perturbed=pert_diag["answer_f1"],
+        failure_attribution=pert_diag["verdict"],
+        failure_root_cause=pert_diag["root_cause"],
+        context_precision_baseline=base_diag.get("context_precision", 1.0),
+        context_precision_perturbed=pert_diag.get("context_precision", 1.0),
     )
     return metrics
 
@@ -819,6 +868,16 @@ async def evaluation_events(req: EvaluationRequest):
     baseline_query = req.custom_query.strip() if req.custom_query and req.custom_query.strip() else req.baseline_query
     clean = _copy_contexts([c for c in req.contexts if "Synthetic" not in c.title])
 
+    gold_titles = list(req.gold_titles) if req.gold_titles else []
+    if not gold_titles:
+        dataset_lookup = load_hotpotqa_dataset()
+        for r in dataset_lookup:
+            if (req.question_id and str(r.get("id")) == str(req.question_id)) or \
+               (r.get("question", "").strip().lower() == req.baseline_query.strip().lower()) or \
+               (r.get("question", "").strip().lower() == baseline_query.strip().lower()):
+                gold_titles = r.get("gold_titles", [])
+                break
+
     yield {"event": "progress", "message": "Running shared baseline", "total": len(groups)}
     baseline_contexts = await asyncio.to_thread(
         perform_vector_retrieval, _copy_contexts(clean), baseline_query,
@@ -830,9 +889,16 @@ async def evaluation_events(req: EvaluationRequest):
         gemini_api_key=req.gemini_api_key, is_perturbed=False,
     )
     baseline_source = "synthetic" if baseline_warning else req.llm_model
+    base_diag = diagnose_failure(
+        retrieved_titles=[c.title for c in baseline_contexts],
+        gold_titles=gold_titles,
+        generated_answer=baseline_answer,
+        ground_truth=req.ground_truth
+    )
     yield {"event": "baseline", "baseline_query": baseline_query,
            "baseline_contexts": [c.model_dump() for c in baseline_contexts],
-           "baseline_answer": baseline_answer, "baseline_generation_source": baseline_source}
+           "baseline_answer": baseline_answer, "baseline_generation_source": baseline_source,
+           "gold_titles": gold_titles, "baseline_diagnosis": base_diag}
 
     dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence"}.intersection(methods) else []
     supporting_titles = req.supporting_titles
@@ -888,9 +954,15 @@ async def evaluation_events(req: EvaluationRequest):
             perturbation_type="conflict" if "conflict" in selected else selected[0],
         )
         warning = " | ".join(dict.fromkeys(w for w in [baseline_warning, answer_warning, rephrase_warning] if w)) or None
+        pert_diag = diagnose_failure(
+            retrieved_titles=[c.title for c in final_contexts],
+            gold_titles=gold_titles,
+            generated_answer=answer,
+            ground_truth=req.ground_truth
+        )
         metrics = await asyncio.to_thread(
             evaluate_metrics, req, baseline_query, query, baseline_contexts, final_contexts,
-            retrieved, baseline_answer, answer,
+            retrieved, baseline_answer, answer, base_diag, pert_diag, gold_titles
         )
         variant = VariantResult(
             variant_id=f"{evaluation_id}:{index}", methods=selected, application_order=selected,
@@ -911,6 +983,7 @@ async def evaluation_events(req: EvaluationRequest):
                 "methods": selected, "mode": req.mode, "settings": settings, "seed": seed,
                 "application_order": selected, "changes": changes,
                 "ground_truth": req.ground_truth,
+                "gold_titles": gold_titles,
                 "baseline_generation_source": baseline_source,
                 "perturbed_generation_source": variant.perturbed_generation_source,
                 "context_stage": {
@@ -920,6 +993,7 @@ async def evaluation_events(req: EvaluationRequest):
                     "perturbed_final": final_docs,
                 },
             },
+            gold_titles=gold_titles
         )
         variants.append(variant)
         yield {"event": "variant", "variant": variant.model_dump()}

@@ -169,7 +169,8 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(result["perturbed_generation_source"], "synthetic")
         response = Mock(status_code=200)
         response.json.return_value = {"response": "An actual model response"}
-        with patch.object(backend.httpx.AsyncClient, "post", new=AsyncMock(return_value=response)):
+        with patch.object(backend, "ensure_ollama_model_pulled", return_value=True), \
+             patch.object(backend.httpx.AsyncClient, "post", new=AsyncMock(return_value=response)):
             result = self.run_request(llm_model="ollama/test")
         self.assertEqual(result["perturbed_generation_source"], "ollama/test")
         self.assertIsNone(result["warning"])

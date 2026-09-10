@@ -73,11 +73,13 @@ export function exportHistoryCSV(history) {
 
 export function historyCSV(history) {
     const headers = ['Run ID', 'Perturbation Type', 'Final Context Cosine Sim', 'Generation Cosine Sim',
-        'Amplification Factor', 'Status', 'Evaluation ID', 'Variant ID', 'Mode', 'Selected Methods',
+        'Amplification Factor', 'Status', 'Failure Attribution', 'Context Recall', 'Answer F1', 'Failure Root Cause',
+        'Evaluation ID', 'Variant ID', 'Mode', 'Selected Methods',
         'Variant Methods', 'Settings', 'Seed', 'Question ID', 'Embedding Provider', 'LLM Model',
         'Search Type', 'Top K', 'Result JSON'];
     const rows = history.map(h => [h.id, h.type, h.retrievalSim, h.generationSim,
-        h.amplificationFactor ?? 'N/A', h.status, h.evaluationId, h.variantId, h.mode,
+        h.amplificationFactor ?? 'N/A', h.status, h.failureAttribution ?? 'N/A', h.contextRecall ?? 'N/A', h.answerF1 ?? 'N/A', h.failureRootCause ?? 'N/A',
+        h.evaluationId, h.variantId, h.mode,
         h.selectedMethods, h.methods, h.settings, h.seed, h.questionId, h.embeddingProvider,
         h.llmModel, h.searchType, h.topK, h.result]);
     const cell = value => '"' + (typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value ?? '')).replaceAll('"', '""') + '"';

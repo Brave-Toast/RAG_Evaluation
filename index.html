@@ -259,7 +259,7 @@
             </section>
 
             <!-- Evaluation Metrics Top Overview Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 
                 <!-- Metric Card 1: Retrieval Cosine Similarity (Context Construction Loss) -->
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden">
@@ -322,14 +322,32 @@
                     <p id="metric-status-desc" class="text-[11px] text-slate-400 mt-1.5">LLM generation logic compensated for input/context perturbation.</p>
                 </div>
 
+                <!-- Metric Card 5: Stage Failure Attribution Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Root Attribution</span>
+                        <div class="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-400">
+                            <i class="fa-solid fa-crosshairs"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span id="telemetry-attribution-badge" class="inline-block text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            SUCCESS
+                        </span>
+                    </div>
+                    <p id="telemetry-attribution-desc" class="text-[11px] text-slate-400 mt-1.5 line-clamp-2" title="Diagnostic Attribution Explanation">
+                        Retriever supplied necessary context and generator produced accurate answer.
+                    </p>
+                </div>
+
             </div>
 
             <!-- Granular Stage Error Telemetry Bar -->
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
                 <h4 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-microscope text-indigo-400"></i> Granular Pipeline Telemetry (Dense Vector & Jaccard Overlap)
+                    <i class="fa-solid fa-microscope text-indigo-400"></i> Granular Pipeline Telemetry (Dense Vector, Jaccard & Stage Isolation)
                 </h4>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
                     <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
                         <span class="text-[10px] text-slate-400 block font-semibold">Query Embedding Shift</span>
                         <span id="telemetry-query-shift" class="text-base font-bold text-indigo-300">1.0000</span>
@@ -353,6 +371,16 @@
                             <span title="Perturbed Answer vs GT" id="telemetry-gen-gt-pert" class="text-xs font-bold text-rose-400">P: 1.00</span>
                         </div>
                         <span class="text-[9px] text-slate-500 block">CosineSim(E(Ans), E(GT))</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-slate-400 block font-semibold">Gold Context Recall</span>
+                        <span id="telemetry-context-recall" class="text-base font-bold text-emerald-400">1.0000</span>
+                        <span class="text-[9px] text-slate-500 block">|Retrieved ∩ Gold| / |Gold|</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-slate-400 block font-semibold">Answer F1 Score</span>
+                        <span id="telemetry-answer-f1" class="text-base font-bold text-indigo-300">1.0000</span>
+                        <span class="text-[9px] text-slate-500 block">Token F1 vs Ground Truth</span>
                     </div>
                 </div>
             </div>

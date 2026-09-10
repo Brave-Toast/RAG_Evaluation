@@ -43,6 +43,7 @@ export async function executeBackendEvaluation(params) {
         baseline_query: params.baselineQuery,
         ground_truth: params.groundTruth,
         contexts: params.contexts || [],
+        gold_titles: params.goldTitles || params.gold_titles || [],
         perturbation_type: params.perturbationType || 'spelling',
         perturbation_types: params.perturbationTypes,
         mode: params.mode || 'combined',

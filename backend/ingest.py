@@ -266,10 +266,15 @@ def extract_and_export_benchmark_json(
             if text:
                 contexts.append({"title": title, "text": text})
                 
+        gold_titles = []
+        if "supporting_facts" in row and isinstance(row["supporting_facts"], dict):
+            gold_titles = list(dict.fromkeys(row["supporting_facts"].get("title", [])))
+
         benchmark_data.append({
             "id": q_id,
             "question": question,
             "ground_truth": answer,
+            "gold_titles": gold_titles,
             "contexts": contexts
         })
         
