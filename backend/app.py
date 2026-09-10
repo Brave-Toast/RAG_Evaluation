@@ -8,7 +8,8 @@ import json
 import random
 import math
 import pathlib
-from typing import List, Optional, Dict, Any
+import asyncio
+from typing import List, Optional, Dict, Any, Literal
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -16,7 +17,14 @@ import numpy as np
 import httpx
 
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
+
+if __package__:
+    from .perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
+                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis)
+else:
+    from perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
+                               method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis)
 
 app = FastAPI(
     title="Modular RAG Evaluation & Perturbation Backend API",
@@ -103,11 +111,16 @@ class EvaluationRequest(BaseModel):
     baseline_query: str
     ground_truth: str
     contexts: List[ContextDoc]
-    perturbation_type: str = "spelling"  # "spelling", "rephrase", "conflict"
-    typo_rate: float = 0.25
+    perturbation_type: Method = "spelling"  # Legacy single-method requests remain supported.
+    perturbation_types: Optional[List[Method]] = Field(default=None, min_length=1, max_length=9)
+    mode: Literal["combined", "separate"] = "combined"
+    settings: PerturbationSettings = Field(default_factory=PerturbationSettings)
+    seed: Optional[int] = Field(default=None, ge=0, le=2147483647)
+    supporting_titles: Optional[List[str]] = None
+    typo_rate: float = Field(default=0.25, ge=0, le=1)
     embedding_provider: str = "sentence-transformers/all-mpnet-base-v2"
     search_type: str = "similarity"  # "similarity" or "mmr"
-    top_k: int = 2
+    top_k: int = Field(default=2, ge=1, le=5)
     llm_model: str = "ollama/qwen3.5:9b"  # "ollama/qwen3.5:9b", "ollama/llama3", "ollama/mistral", "gemini-3-flash-preview", "synthetic-evaluator"
     gemini_api_key: Optional[str] = None
 
@@ -133,7 +146,7 @@ class MetricTelemetry(BaseModel):
     status_desc: str
 
 
-class EvaluationResponse(BaseModel):
+class VariantResult(BaseModel):
     baseline_query: str
     perturbed_query: str
     baseline_contexts: List[ContextDoc]
@@ -143,6 +156,24 @@ class EvaluationResponse(BaseModel):
     ground_truth: str
     metrics: MetricTelemetry
     warning: Optional[str] = None
+    variant_id: str
+    methods: List[Method]
+    application_order: List[Method]
+    changes: List[Dict[str, Any]]
+    baseline_retrieved_contexts: List[ContextDoc]
+    perturbed_retrieved_contexts: List[ContextDoc]
+    baseline_generation_source: str
+    perturbed_generation_source: str
+
+
+class EvaluationResponse(VariantResult):
+    # Top-level comparison fields mirror the first variant for existing clients.
+    evaluation_id: str
+    mode: str
+    selected_methods: List[Method]
+    settings: Dict[str, Any]
+    seed: int
+    variants: List[VariantResult]
 
 
 DATASET_PATH = pathlib.Path(__file__).parent / "hotpotqa_dataset.json"
@@ -158,7 +189,8 @@ def log_stage_run(
     baseline_answer: str,
     perturbed_answer: str,
     metrics: "MetricTelemetry",
-    warning: Optional[str] = None
+    warning: Optional[str] = None,
+    experiment: Optional[Dict[str, Any]] = None
 ) -> None:
     """
     Appends a structured, stage-level record of this evaluation run to a JSONL log file.
@@ -197,6 +229,8 @@ def log_stage_run(
         "metrics": metrics.model_dump(),
         "warning": warning
     }
+    if experiment:
+        record.update(experiment)
 
     try:
         with open(STAGE_LOG_PATH, "a", encoding="utf-8") as f:
@@ -451,7 +485,7 @@ async def generate_llm_answer(
             print(warning_msg)
 
     # 2. Gemini Cloud API Integration
-    if model_choice == "gemini-3-flash-preview" or (gemini_api_key and not model_choice.startswith("ollama/")):
+    if model_choice == "gemini-3-flash-preview" or (gemini_api_key and model_choice != "synthetic-evaluator" and not model_choice.startswith("ollama/")):
         api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
         if api_key:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={api_key}"
@@ -470,6 +504,8 @@ async def generate_llm_answer(
             except Exception as e:
                 print(f"Gemini API call warning: {e}")
 
+    # Mark scripted answers and provider failures in experiment results.
+    warning_msg = warning_msg or ("Synthetic benchmark output (scripted from ground truth)." if model_choice == "synthetic-evaluator" else "Generation unavailable or empty response. Used synthetic fallback.")
     # 3. Synthetic Benchmark Fallback (Clean & Pure Data Integrity)
     if not is_perturbed:
         return ground_truth, warning_msg
@@ -515,7 +551,7 @@ async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key:
             warning_msg = f"Ollama local service unreachable for query rephrasing."
 
     # 2. Gemini Cloud API
-    if model_choice == "gemini-3-flash-preview" or (gemini_api_key and not model_choice.startswith("ollama/")):
+    if model_choice == "gemini-3-flash-preview" or (gemini_api_key and model_choice != "synthetic-evaluator" and not model_choice.startswith("ollama/")):
         api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
         if api_key:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={api_key}"
@@ -550,20 +586,23 @@ async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key:
     else:
         rephrased = f"Could you provide details regarding: {q_clean.lower()}?"
         
-    return rephrased, warning_msg
+    return rephrased, warning_msg or "Rule-based rephrase fallback used; semantic equivalence is not guaranteed."
 
 
-def inject_spelling_typos(text: str, error_rate: float = 0.25) -> str:
+def inject_spelling_typos(text: str, error_rate: float = 0.25, rng=None) -> str:
     """Injects stochastic spelling perturbations into input query string."""
+    rng = rng or random
+    if error_rate == 0:
+        return text
     if not text:
         return ""
     words = text.split()
     result = []
     chars = "abcdefghijklmnopqrstuvwxyz"
     for word in words:
-        if len(word) > 3 and random.random() < error_rate:
-            op = random.choice(["swap", "drop", "sub"])
-            idx = random.randint(1, len(word) - 2)
+        if len(word) > 3 and rng.random() < error_rate:
+            op = rng.choice(["swap", "drop", "sub"])
+            idx = rng.randint(1, len(word) - 2)
             if op == "swap":
                 arr = list(word)
                 arr[idx], arr[idx+1] = arr[idx+1], arr[idx]
@@ -571,7 +610,7 @@ def inject_spelling_typos(text: str, error_rate: float = 0.25) -> str:
             elif op == "drop":
                 result.append(word[:idx] + word[idx+1:])
             else:
-                sub_char = random.choice(chars)
+                sub_char = rng.choice(chars)
                 result.append(word[:idx] + sub_char + word[idx+1:])
         else:
             result.append(word)
@@ -639,80 +678,16 @@ def trigger_ingestion(req: Optional[IngestRequest] = None):
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
 
 
-@app.post("/api/run-evaluation", response_model=EvaluationResponse)
-async def run_evaluation(req: EvaluationRequest):
-    """
-    Main Evaluation Endpoint:
-    Processes baseline and perturbed RAG pipelines through ChromaDB retrieval and local/cloud LLMs,
-    and returns granular pipeline error telemetry metrics with per-document relevance scores.
-    """
-    active_query = req.custom_query.strip() if req.custom_query and req.custom_query.strip() else req.baseline_query
+def evaluate_metrics(req, baseline_query, perturbed_query, baseline_contexts,
+                     perturbed_contexts, perturbed_retrieved_contexts,
+                     baseline_answer, perturbed_answer):
     ground_truth = req.ground_truth
-
-    # 1. Pristine Baseline Pipeline (Guaranteed 100% clean reference control)
-    baseline_query = active_query
-    clean_baseline_contexts = [c for c in req.contexts if "Synthetic" not in c.title]
-    baseline_contexts = perform_vector_retrieval(
-        clean_baseline_contexts, 
-        baseline_query, 
-        req.search_type, 
-        req.top_k, 
-        req.embedding_provider
-    )
-
-    # 2. Perturbed Test Pipeline (Receives perturbation triggers)
-    perturbed_query = active_query
-    raw_perturbed_contexts = list(clean_baseline_contexts)
-    rephrase_warn = None
-    
-    if req.perturbation_type == "spelling":
-        perturbed_query = inject_spelling_typos(active_query, req.typo_rate)
-    elif req.perturbation_type == "rephrase":
-        perturbed_query, rephrase_warn = await generate_query_rephrase(
-            query=active_query,
-            model_choice=req.llm_model,
-            gemini_api_key=req.gemini_api_key
-        )
-    elif req.perturbation_type == "conflict":
-        raw_perturbed_contexts = inject_conflicting_context(clean_baseline_contexts, active_query, ground_truth)
-
-    perturbed_contexts = perform_vector_retrieval(
-        raw_perturbed_contexts, 
-        perturbed_query, 
-        req.search_type, 
-        req.top_k, 
-        req.embedding_provider
-    )
-
-    # 3. LLM Answer Generation with Strict Isolation
-    baseline_answer, warn1 = await generate_llm_answer(
-        query=baseline_query,
-        contexts=baseline_contexts,
-        model_choice=req.llm_model,
-        ground_truth=ground_truth,
-        gemini_api_key=req.gemini_api_key,
-        is_perturbed=False,
-        perturbation_type=req.perturbation_type
-    )
-    
-    perturbed_answer, warn2 = await generate_llm_answer(
-        query=perturbed_query,
-        contexts=perturbed_contexts,
-        model_choice=req.llm_model,
-        ground_truth=ground_truth,
-        gemini_api_key=req.gemini_api_key,
-        is_perturbed=True,
-        perturbation_type=req.perturbation_type
-    )
-    
-    warning_combined = warn1 or warn2 or rephrase_warn
-
     # 4. Dense Vector Telemetry & Metric Calculations
     # A. Query Embedding Shift: CosineSim(E(Q_baseline), E(Q_perturbed))
     query_shift = compute_dense_cosine_similarity(baseline_query, perturbed_query, req.embedding_provider)
 
     # B. Retrieval Rank Shift: Top-K Jaccard Overlap
-    rank_shift_jaccard = compute_jaccard_overlap(baseline_contexts, perturbed_contexts)
+    rank_shift_jaccard = compute_jaccard_overlap(baseline_contexts, perturbed_retrieved_contexts)
 
     # C. Context Construction Loss: CosineSim(E(C_baseline), E(C_perturbed))
     base_ctx_str = " ".join([f"{c.title} {c.text}" for c in baseline_contexts])
@@ -759,30 +734,154 @@ async def run_evaluation(req: EvaluationRequest):
         status_text=status_text,
         status_desc=status_desc
     )
-    log_stage_run(
-        req=req,
-        baseline_query=baseline_query,
-        perturbed_query=perturbed_query,
-        baseline_contexts=baseline_contexts,
-        perturbed_contexts=perturbed_contexts,
-        baseline_answer=baseline_answer,
-        perturbed_answer=perturbed_answer,
-        metrics=metrics,
-        warning=warning_combined
-    )
+    return metrics
 
-    return EvaluationResponse(
-        baseline_query=baseline_query,
-        perturbed_query=perturbed_query,
-        baseline_contexts=baseline_contexts,
-        perturbed_contexts=perturbed_contexts,
-        baseline_answer=baseline_answer,
-        perturbed_answer=perturbed_answer,
-        ground_truth=ground_truth,
-        metrics=metrics,
-        warning=warning_combined
+def _copy_contexts(contexts):
+    return [doc.model_copy(deep=True) for doc in contexts]
+
+
+async def evaluation_events(req: EvaluationRequest):
+    """One baseline per request; each variant starts with independent inputs."""
+    import uuid as uuid_module
+
+    methods = ordered_methods(req.perturbation_types or [req.perturbation_type])
+    groups = [methods] if req.mode == "combined" else [[method] for method in methods]
+    seed = req.seed if req.seed is not None else random.SystemRandom().randint(0, 2147483647)
+    evaluation_id = uuid_module.uuid4().hex
+    settings = {**req.settings.model_dump(), "typo_rate": req.typo_rate}
+    baseline_query = req.custom_query.strip() if req.custom_query and req.custom_query.strip() else req.baseline_query
+    clean = _copy_contexts([c for c in req.contexts if "Synthetic" not in c.title])
+
+    yield {"event": "progress", "message": "Running shared baseline", "total": len(groups)}
+    baseline_contexts = await asyncio.to_thread(
+        perform_vector_retrieval, _copy_contexts(clean), baseline_query,
+        req.search_type, req.top_k, req.embedding_provider,
     )
-    
+    baseline_answer, baseline_warning = await generate_llm_answer(
+        query=baseline_query, contexts=_copy_contexts(baseline_contexts),
+        model_choice=req.llm_model, ground_truth=req.ground_truth,
+        gemini_api_key=req.gemini_api_key, is_perturbed=False,
+    )
+    baseline_source = "synthetic" if baseline_warning else req.llm_model
+    yield {"event": "baseline", "baseline_query": baseline_query,
+           "baseline_contexts": [c.model_dump() for c in baseline_contexts],
+           "baseline_answer": baseline_answer, "baseline_generation_source": baseline_source}
+
+    dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence"}.intersection(methods) else []
+    supporting_titles = req.supporting_titles
+    if supporting_titles is None and req.question_id and not req.custom_query:
+        row = next((r for r in dataset if str(r.get("id")) == str(req.question_id)), {})
+        supporting_titles = row.get("supporting_titles")
+        facts = row.get("supporting_facts")
+        if supporting_titles is None and isinstance(facts, dict):
+            supporting_titles = facts.get("title")
+    pool = distractor_pool(dataset, req.question_id, [c.model_dump() for c in clean], baseline_query)
+    variants = []
+    for index, selected in enumerate(groups, 1):
+        yield {"event": "progress", "message": f"Running variant {index} of {len(groups)}",
+               "current": index, "total": len(groups), "methods": selected}
+        query, candidates, changes = baseline_query, _copy_contexts(clean), []
+        rephrase_warning = None
+        if "rephrase" in selected:
+            before = query
+            query, rephrase_warning = await generate_query_rephrase(query, req.llm_model, req.gemini_api_key)
+            changes.append(change_record("rephrase", "pre_retrieval", query != before,
+                                         "Rephrased question." if query != before else "Question unchanged.",
+                                         [{"original": before, "replacement": query, "warning": rephrase_warning}]))
+        if "spelling" in selected:
+            before = query
+            query = inject_spelling_typos(query, req.typo_rate, method_rng(seed, "spelling"))
+            changes.append(change_record("spelling", "pre_retrieval", query != before,
+                                         "Injected question typos." if query != before else "No characters changed at this severity/seed.",
+                                         [{"original": before, "replacement": query}]))
+        if "emoji" in selected:
+            query, emoji_change = perturb_query_with_emojis(query, req.settings, seed)
+            changes.append(emoji_change)
+        if "conflict" in selected:
+            candidates = inject_conflicting_context(candidates, query, req.ground_truth)
+            changes.append(change_record("conflict", "pre_retrieval", True,
+                                         "Added contradictory candidate document; retrieval determines whether it reaches generation.",
+                                         [candidates[0].model_dump()]))
+
+        if PRE_RETRIEVAL.intersection(selected):
+            retrieved = await asyncio.to_thread(
+                perform_vector_retrieval, candidates, query, req.search_type, req.top_k, req.embedding_provider,
+            )
+        else:
+            # Post-retrieval experiments use exactly the baseline retrieval output.
+            retrieved = _copy_contexts(baseline_contexts)
+        final_docs, context_changes = apply_context_methods(
+            [c.model_dump() for c in retrieved], selected, req.settings, seed, supporting_titles, pool,
+        )
+        changes.extend(context_changes)
+        final_contexts = [ContextDoc(**doc) for doc in final_docs]
+        answer, answer_warning = await generate_llm_answer(
+            query=query, contexts=_copy_contexts(final_contexts), model_choice=req.llm_model,
+            ground_truth=req.ground_truth, gemini_api_key=req.gemini_api_key, is_perturbed=True,
+            perturbation_type="conflict" if "conflict" in selected else selected[0],
+        )
+        warning = " | ".join(dict.fromkeys(w for w in [baseline_warning, answer_warning, rephrase_warning] if w)) or None
+        metrics = await asyncio.to_thread(
+            evaluate_metrics, req, baseline_query, query, baseline_contexts, final_contexts,
+            retrieved, baseline_answer, answer,
+        )
+        variant = VariantResult(
+            variant_id=f"{evaluation_id}:{index}", methods=selected, application_order=selected,
+            baseline_query=baseline_query, perturbed_query=query,
+            baseline_contexts=_copy_contexts(baseline_contexts), perturbed_contexts=final_contexts,
+            baseline_retrieved_contexts=_copy_contexts(baseline_contexts),
+            perturbed_retrieved_contexts=_copy_contexts(retrieved),
+            baseline_answer=baseline_answer, perturbed_answer=answer, ground_truth=req.ground_truth,
+            metrics=metrics, warning=warning, changes=changes,
+            baseline_generation_source=baseline_source,
+            perturbed_generation_source="synthetic" if answer_warning else req.llm_model,
+        )
+        log_stage_run(
+            req, baseline_query, query, baseline_contexts, retrieved, baseline_answer, answer, metrics, warning,
+            experiment={
+                "evaluation_id": evaluation_id, "variant_id": variant.variant_id,
+                "perturbation_type": "+".join(selected), "selected_methods": methods,
+                "methods": selected, "mode": req.mode, "settings": settings, "seed": seed,
+                "application_order": selected, "changes": changes,
+                "ground_truth": req.ground_truth,
+                "baseline_generation_source": baseline_source,
+                "perturbed_generation_source": variant.perturbed_generation_source,
+                "context_stage": {
+                    "baseline_retrieved": [c.model_dump() for c in baseline_contexts],
+                    "perturbed_retrieved": [c.model_dump() for c in retrieved],
+                    "baseline_final": [c.model_dump() for c in baseline_contexts],
+                    "perturbed_final": final_docs,
+                },
+            },
+        )
+        variants.append(variant)
+        yield {"event": "variant", "variant": variant.model_dump()}
+
+    response = EvaluationResponse(
+        **variants[0].model_dump(), evaluation_id=evaluation_id, mode=req.mode,
+        selected_methods=methods, settings=settings, seed=seed, variants=variants,
+    )
+    yield {"event": "complete", "result": response.model_dump()}
+
+
+@app.post("/api/run-evaluation", response_model=EvaluationResponse)
+async def run_evaluation(req: EvaluationRequest):
+    async for event in evaluation_events(req):
+        if event["event"] == "complete":
+            return event["result"]
+
+
+@app.post("/api/run-evaluation/stream")
+async def stream_evaluation(req: EvaluationRequest):
+    """NDJSON progress/results for the dashboard; validation still returns HTTP 422."""
+    async def stream():
+        try:
+            async for event in evaluation_events(req):
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+        except Exception as exc:
+            print(f"Evaluation stream failed: {exc}")
+            yield json.dumps({"event": "error", "message": "Evaluation failed. Check the backend terminal for details."}) + "\n"
+    return StreamingResponse(stream(), media_type="application/x-ndjson", headers={"Cache-Control": "no-cache"})
 
 
 if __name__ == "__main__":

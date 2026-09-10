@@ -2,6 +2,23 @@
  * Perturbation Injection Module
  */
 
+// Display order matches the backend's fixed composition order.
+export const PERTURBATION_LABELS = {
+    rephrase: 'Query rephrasing',
+    spelling: 'Spelling errors',
+    emoji: 'Emoji perturbation',
+    conflict: 'Conflicting context',
+    remove_evidence: 'Remove supporting evidence',
+    alter_facts: 'Alter facts',
+    truncate: 'Truncate passages',
+    irrelevant: 'Add irrelevant passages',
+    shuffle: 'Shuffle passage order'
+};
+
+export function methodLabel(methods) {
+    return methods.map(method => PERTURBATION_LABELS[method] || method).join(' + ');
+}
+
 /**
  * Injects synthetic spelling errors (swaps, drops, character substitutions) into text.
  * @param {string} text 

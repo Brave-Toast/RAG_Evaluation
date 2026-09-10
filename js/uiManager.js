@@ -4,6 +4,10 @@
 
 let stageChart = null;
 
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+}
+
 /**
  * Renders context cards into a target container.
  * @param {string} containerId 
@@ -13,6 +17,10 @@ export function renderContexts(containerId, contexts) {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
+    if (!contexts.length) {
+        container.textContent = 'No passages supplied.';
+        return;
+    }
     
     contexts.forEach((c, i) => {
         const card = document.createElement('div');
@@ -28,13 +36,13 @@ export function renderContexts(containerId, contexts) {
 
         card.innerHTML = `
             <div class="flex items-center justify-between font-bold mb-1.5 text-[11px]">
-                <span class="${isConflictDoc ? 'text-rose-400' : 'text-indigo-400'} truncate mr-2">[Doc ${i+1}] ${c.title}</span>
+                <span class="${isConflictDoc ? 'text-rose-400' : 'text-indigo-400'} truncate mr-2">[Doc ${i+1}] ${escapeHTML(c.title)}</span>
                 <div class="flex items-center gap-1.5 shrink-0">
                     ${hasScore ? `<span class="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="ChromaDB Relevance Score"><i class="fa-solid fa-bullseye text-[8px] mr-1"></i>Score: ${scoreVal}</span>` : ''}
                     ${isConflictDoc ? '<span class="text-[9px] bg-rose-500/20 px-1.5 py-0.5 rounded text-rose-300">Conflicting Injected</span>' : ''}
                 </div>
             </div>
-            <p class="leading-relaxed font-sans text-[11px]">${c.text}</p>
+            <p class="leading-relaxed font-sans text-[11px]">${escapeHTML(c.text)}</p>
         `;
         container.appendChild(card);
     });
@@ -108,7 +116,7 @@ export function updateHistoryUI(history) {
         item.innerHTML = `
             <div class="flex items-center space-x-2">
                 <span class="font-mono text-[10px] text-slate-500">#${run.id}</span>
-                <span class="font-semibold text-slate-200 capitalize">${run.type}</span>
+                <span class="font-semibold text-slate-200">${escapeHTML(run.type)}${run.mode ? `<small class="block text-slate-400">${escapeHTML(run.mode)} · baseline ${escapeHTML(run.evaluationId?.slice(0, 8))} · seed ${escapeHTML(run.seed)}</small>` : ''}</span>
             </div>
             <div class="flex items-center space-x-2">
                 <span class="text-[10px] text-slate-400">R: ${run.retrievalSim} | G: ${run.generationSim}</span>
@@ -138,7 +146,7 @@ export function initChart() {
             labels: ['Initial Baseline'],
             datasets: [
                 {
-                    label: 'Retrieval Cosine Sim',
+                    label: 'Final Context Cosine Sim',
                     data: [1.0],
                     backgroundColor: 'rgba(99, 102, 241, 0.7)',
                     borderColor: 'rgba(99, 102, 241, 1)',
