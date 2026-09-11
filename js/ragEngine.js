@@ -35,7 +35,7 @@ export async function checkBackendHealth(backendUrl = DEFAULT_BACKEND_URL) {
  */
 export async function executeBackendEvaluation(params) {
     const backendUrl = params.backendUrl || DEFAULT_BACKEND_URL;
-    const endpoint = `${backendUrl}/api/run-evaluation`;
+    const endpoint = `${backendUrl}/api/run-evaluation${params.onEvent ? '/stream' : ''}`;
 
     const payload = {
         question_id: params.questionId || null,
@@ -43,8 +43,14 @@ export async function executeBackendEvaluation(params) {
         baseline_query: params.baselineQuery,
         ground_truth: params.groundTruth,
         contexts: params.contexts || [],
+        gold_titles: params.goldTitles || params.gold_titles || [],
         perturbation_type: params.perturbationType || 'spelling',
-        typo_rate: parseFloat(params.typoRate) || 0.25,
+        perturbation_types: params.perturbationTypes,
+        mode: params.mode || 'combined',
+        settings: params.settings || {},
+        seed: params.seed ?? null,
+        supporting_titles: params.supportingTitles ?? null,
+        typo_rate: params.typoRate ?? 0.25,
         embedding_provider: params.embeddingProvider || 'sentence-transformers/all-mpnet-base-v2',
         search_type: params.searchType || 'similarity',
         top_k: parseInt(params.topK, 10) || 2,
@@ -67,10 +73,40 @@ export async function executeBackendEvaluation(params) {
             throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
-        const data = await response.json();
-        return data;
+        if (!params.onEvent) return await response.json();
+        return await readEvaluationStream(response, params.onEvent);
     } catch (err) {
         console.error("Error executing backend evaluation:", err);
         throw err;
+    }
+}
+
+export async function readEvaluationStream(response, onEvent) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result;
+    const consume = line => {
+        if (!line.trim()) return;
+        const event = JSON.parse(line);
+        if (event.event === 'error') throw new Error(event.message);
+        if (event.event === 'complete') result = event.result;
+        onEvent(event);
+    };
+    try {
+        while (true) {
+            const {value, done} = await reader.read();
+            buffer += decoder.decode(value, {stream: !done});
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+            lines.forEach(consume);
+            if (done) break;
+        }
+        consume(buffer);
+        if (!result) throw new Error('Evaluation ended before completion. Check the backend terminal.');
+        return result;
+    } finally {
+        await reader.cancel();
+        reader.releaseLock();
     }
 }

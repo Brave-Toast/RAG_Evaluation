@@ -1,4 +1,4 @@
-/* Custom Scrollbar Styles */
+/* Custom Scrollbar Styles (retinted to match new palette) */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -7,14 +7,15 @@
     background: #0f172a;
 }
 ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #1f9d8f;
     border-radius: 4px;
+    opacity: 0.6;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    background: #2dbfae;
 }
 
-/* Context & Diff Highlighting */
+/* Context & Diff Highlighting (unchanged) */
 .diff-added {
     background-color: rgba(239, 68, 68, 0.15);
     border-left: 3px solid #ef4444;
@@ -24,12 +25,71 @@
     border-left: 3px solid #10b981;
 }
 
-/* Custom Animation Utilities */
+/* Custom Animation Utilities (unchanged) */
 .fade-in {
     animation: fadeIn 0.3s ease-in-out;
 }
-
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------------------------------------------
+   Typography — display face for headings, mono for readouts.
+   Loaded via <link> tags added to <head> (Space Grotesk / IBM Plex Mono).
+   ------------------------------------------------------------ */
+h1, h3, h4, .font-bold {
+    font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0.01em;
+}
+
+/* All numeric telemetry / metric readouts get a monospace treatment
+   so figures line up and read like instrument output rather than
+   generic UI copy. Targets by ID prefix, so no HTML class edits needed. */
+[id^="metric-"],
+[id^="telemetry-"],
+#total-runs-count,
+#resilience-rate,
+.font-mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
+    letter-spacing: 0.01em;
+}
+
+/* ------------------------------------------------------------
+   Panel polish — subtle depth so metric/context cards read as
+   instrument readouts instead of flat SaaS tiles.
+   ------------------------------------------------------------ */
+.bg-slate-900.border.border-slate-800 {
+    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.03) inset,
+                0 8px 24px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Faint instrument-grid texture behind the whole page */
+body {
+    background-image:
+        radial-gradient(circle at 12% 0%, rgba(45, 191, 174, 0.06) 0%, transparent 45%),
+        repeating-linear-gradient(0deg, transparent 0px, transparent 31px, rgba(255,255,255,0.02) 32px);
+    background-attachment: fixed;
+}
+
+/* Live status dot gets a touch more presence */
+#status-badge .animate-pulse {
+    box-shadow: 0 0 8px currentColor;
+}
+
+/* Keyboard focus visibility (accessibility floor) */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid #2dbfae;
+    outline-offset: 2px;
+}
+
+/* Run button — slightly stronger glow to read as the primary action */
+#run-pipeline-btn {
+    box-shadow: 0 6px 20px -6px rgba(45, 191, 174, 0.35);
+}
+#run-pipeline-btn:hover {
+    box-shadow: 0 8px 24px -6px rgba(45, 191, 174, 0.55);
 }
