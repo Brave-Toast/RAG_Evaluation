@@ -301,6 +301,13 @@ def ensure_ollama_model_pulled(model_name:str)->bool:
         print(f"Pull error for '{model_name}': {e}")
     return False
           
+def normalize_vector(vec: np.ndarray) -> np.ndarray:
+    """Converts an embedding to float32 and normalizes it to unit length."""
+    vec = np.asarray(vec, dtype=np.float32)
+    norm = np.linalg.norm(vec)
+    return vec / norm if norm > 0 else vec
+
+
 def compute_dense_embedding(text: str, provider: str = "sentence-transformers/all-mpnet-base-v2") -> np.ndarray:
     """Computes a dense vector embedding using Ollama, SentenceTransformers, or fallback encoder."""
     if not text or not text.strip():
@@ -316,7 +323,7 @@ def compute_dense_embedding(text: str, provider: str = "sentence-transformers/al
                     if res.status_code == 200:
                         emb = res.json().get("embedding")
                         if emb:
-                            return np.array(emb, dtype=np.float32)
+                            return normalize_vector(emb)
             except Exception as e:
                 print(f"Ollama embeddings error for '{model_name}': {e}")
         else:
@@ -335,7 +342,7 @@ def compute_dense_embedding(text: str, provider: str = "sentence-transformers/al
                     if res.status_code == 200:
                         emb = res.json().get("data", [{}])[0].get("embedding")
                         if emb:
-                            return np.array(emb, dtype=np.float32)
+                            return normalize_vector(emb)
                     else:
                         print(f"OpenAI embeddings HTTP {res.status_code}: {res.text[:200]}")
             except Exception as e:
@@ -355,7 +362,7 @@ def compute_dense_embedding(text: str, provider: str = "sentence-transformers/al
     if st_model is not None:
         try:
             emb = st_model.encode(text)
-            return np.array(emb, dtype=np.float32)
+            return normalize_vector(emb)
         except Exception as e:
             print(f"SentenceTransformer encode notice: {e}")
 
@@ -366,8 +373,7 @@ def compute_dense_embedding(text: str, provider: str = "sentence-transformers/al
     for w in words:
         idx = hash(w) % dim
         vec[idx] += 1.0
-    norm = np.linalg.norm(vec)
-    return vec / norm if norm > 0 else vec
+    return normalize_vector(vec)
 
 
 def compute_dense_cosine_similarity(text1: str, text2: str, provider: str = "sentence-transformers/all-mpnet-base-v2") -> float:
