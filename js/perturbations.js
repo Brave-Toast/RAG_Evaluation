@@ -7,6 +7,8 @@ export const PERTURBATION_LABELS = {
     rephrase: 'Query rephrasing',
     spelling: 'Spelling errors',
     emoji: 'Emoji perturbation',
+    negation_flip: 'Negation flip',
+    entity_substitution: 'Entity substitution',
     conflict: 'Conflicting context',
     remove_evidence: 'Remove supporting evidence',
     alter_facts: 'Alter facts',

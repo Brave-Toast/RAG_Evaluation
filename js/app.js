@@ -210,7 +210,7 @@ function renderVariant(result) {
         const item = document.createElement('details');
         item.className = 'text-xs text-slate-300 bg-slate-950 p-2 rounded';
         const summary = document.createElement('summary');
-        summary.textContent = `${PERTURBATION_LABELS[change.method]}: ${change.status}: ${change.summary}`;
+        summary.textContent = `${PERTURBATION_LABELS[change.method] || change.method}: ${change.status}: ${change.summary}`;
         const detail = document.createElement('pre');
         detail.className = 'whitespace-pre-wrap break-words text-[11px] mt-2';
         detail.textContent = JSON.stringify(change.details, null, 2);

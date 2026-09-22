@@ -4,20 +4,20 @@ import copy
 import hashlib
 import random
 import re
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-Method = Literal[
+Method: TypeAlias = Literal[
     "spelling", "rephrase", "conflict", "remove_evidence",
-    "irrelevant", "alter_facts", "shuffle", "truncate", "emoji",
+    "irrelevant", "alter_facts", "shuffle", "truncate", "emoji", "negation_flip", "entity_substitution",
 ]
 METHOD_ORDER = (
-    "rephrase", "spelling", "emoji", "conflict", "remove_evidence",
+    "rephrase", "spelling", "emoji", "negation_flip", "entity_substitution", "conflict", "remove_evidence",
     "alter_facts", "truncate", "irrelevant", "shuffle",
 )
-PRE_RETRIEVAL = {"rephrase", "spelling", "emoji", "conflict"}
+PRE_RETRIEVAL = {"rephrase", "spelling", "emoji", "conflict", "negation_flip", "entity_substitution"}
 
 
 class PerturbationSettings(BaseModel):
