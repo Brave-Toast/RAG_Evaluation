@@ -283,14 +283,7 @@ function renderVariant(result) {
             'text-xs text-slate-300 bg-slate-950 p-2 rounded';
 
         const summary = document.createElement('summary');
-<<<<<<< Updated upstream
         summary.textContent = `${PERTURBATION_LABELS[change.method] || change.method}: ${change.status}: ${change.summary}`;
-=======
-
-        summary.textContent =
-            `${PERTURBATION_LABELS[change.method]}: ${change.status}: ${change.summary}`;
-
->>>>>>> Stashed changes
         const detail = document.createElement('pre');
 
         detail.className =
