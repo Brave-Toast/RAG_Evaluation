@@ -71,6 +71,12 @@ if FRONTEND_DIR.exists():
 # SentenceTransformer model registry & loader
 EMBEDDING_MODELS: Dict[str, Any] = {}
 
+ENSEMBLE_EMBEDDING_PROVIDER = "ensemble/mpnet+nomic"
+ENSEMBLE_COMPONENT_PROVIDERS = (
+    "sentence-transformers/all-mpnet-base-v2",
+    "ollama/nomic-embed-text",
+)
+
 def get_sentence_transformer(model_name: str = "sentence-transformers/all-mpnet-base-v2"):
     """Loads or retrieves cached SentenceTransformer model instance."""
     normalized_name = model_name.replace("huggingface/", "").strip()
@@ -382,6 +388,14 @@ def compute_dense_cosine_similarity(text1: str, text2: str, provider: str = "sen
         return 0.0
     if text1.strip() == text2.strip():
         return 1.0
+    if provider == ENSEMBLE_EMBEDDING_PROVIDER:
+        # Ensemble scores are fused after each model computes cosine similarity
+        # in its own vector space; MPNet and Nomic vectors are never combined.
+        component_scores = [
+            compute_dense_cosine_similarity(text1, text2, component_provider)
+            for component_provider in ENSEMBLE_COMPONENT_PROVIDERS
+        ]
+        return float(np.mean(component_scores))
     vec1 = compute_dense_embedding(text1, provider)
     vec2 = compute_dense_embedding(text2, provider)
     norm1 = np.linalg.norm(vec1)
@@ -390,6 +404,75 @@ def compute_dense_cosine_similarity(text1: str, text2: str, provider: str = "sen
         return 0.0
     sim = float(np.dot(vec1, vec2) / (norm1 * norm2))
     return float(np.clip(sim, 0.0, 1.0))
+
+
+def perform_ensemble_retrieval(
+    docs: List[ContextDoc], query: str, search_type: str, top_k: int
+) -> List[ContextDoc]:
+    """Retrieve by averaging MPNet and Nomic cosine scores without mixing vectors."""
+    k_val = min(top_k, len(docs))
+    query_vectors = {
+        provider: compute_dense_embedding(query, provider)
+        for provider in ENSEMBLE_COMPONENT_PROVIDERS
+    }
+
+    scored = []
+    for doc in docs:
+        document_text = f"{doc.title} {doc.text}"
+        document_vectors = {
+            provider: compute_dense_embedding(document_text, provider)
+            for provider in ENSEMBLE_COMPONENT_PROVIDERS
+        }
+        # Each cosine is calculated within its model's own vector space. Only
+        # the scalar scores are fused using the required equal-weight mean.
+        component_scores = []
+        for provider in ENSEMBLE_COMPONENT_PROVIDERS:
+            query_vector = query_vectors[provider]
+            document_vector = document_vectors[provider]
+            query_norm = np.linalg.norm(query_vector)
+            document_norm = np.linalg.norm(document_vector)
+            if query_norm == 0 or document_norm == 0:
+                component_scores.append(0.0)
+            else:
+                similarity = float(np.dot(query_vector, document_vector) / (query_norm * document_norm))
+                component_scores.append(float(np.clip(similarity, 0.0, 1.0)))
+        scored.append({
+            "doc": doc,
+            "score": float(np.mean(component_scores)),
+            "text": doc.text,
+        })
+
+    if search_type.lower() == "mmr":
+        selected = []
+        unselected = list(scored)
+        lambd = 0.7
+        while len(selected) < k_val and unselected:
+            best_idx = 0
+            best_mmr = -1e9
+            for index, candidate in enumerate(unselected):
+                max_redundancy = max(
+                    (
+                        compute_dense_cosine_similarity(
+                            candidate["text"], chosen["text"], ENSEMBLE_EMBEDDING_PROVIDER
+                        )
+                        for chosen in selected
+                    ),
+                    default=0.0,
+                )
+                mmr_score = (lambd * candidate["score"]) - ((1.0 - lambd) * max_redundancy)
+                if mmr_score > best_mmr:
+                    best_mmr = mmr_score
+                    best_idx = index
+            selected.append(unselected.pop(best_idx))
+        scored = selected
+    else:
+        scored.sort(key=lambda item: item["score"], reverse=True)
+        scored = scored[:k_val]
+
+    return [
+        ContextDoc(title=item["doc"].title, text=item["doc"].text, score=round(item["score"], 4))
+        for item in scored
+    ]
 
 
 def compute_jaccard_overlap(docs1: List[ContextDoc], docs2: List[ContextDoc]) -> float:
@@ -417,6 +500,11 @@ def perform_vector_retrieval(
     """
     if not docs:
         return []
+
+    # The ensemble must bypass Chroma: MPNet and Nomic have incompatible
+    # dimensions/vector spaces, so retrieval fuses their scalar cosine scores.
+    if embedding_provider == ENSEMBLE_EMBEDDING_PROVIDER:
+        return perform_ensemble_retrieval(docs, query, search_type, top_k)
     
     k_val = min(top_k, len(docs))
     
@@ -726,6 +814,7 @@ def health_check():
         "status": "online",
         "embeddings_active": True,
         "supported_embedding_models": [
+            ENSEMBLE_EMBEDDING_PROVIDER,
             "sentence-transformers/all-mpnet-base-v2",
             "sentence-transformers/all-MiniLM-L6-v2",
             "ollama/nomic-embed-text",
