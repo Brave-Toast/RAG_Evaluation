@@ -146,6 +146,10 @@
                             <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Truncate passages</span><span class="block text-[10px] text-slate-400">After retrieval; retain a percentage of text</span></span>
                         </label>
                     </fieldset>
+                    <fieldset class="space-y-2"><legend class="text-xs text-slate-400 mb-2">Repairs (after retrieval, before the answer)</legend>
+                        <div id="repair-options" class="space-y-2"></div>
+                        <p id="repair-empty" class="text-[10px] text-slate-400">No repairs registered yet. Add one in backend/repairs.py and it appears here.</p>
+                    </fieldset>
                     <div data-method-settings="spelling">
                         <label for="typo-rate-slider" class="text-xs text-slate-300">Typo severity: <span id="typo-rate-val">25%</span></label>
                         <input type="range" id="typo-rate-slider" min="0" max="100" step="5" value="25" class="w-full accent-indigo-500">
