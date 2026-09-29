@@ -12,12 +12,15 @@ from pydantic import BaseModel, ConfigDict, Field
 Method: TypeAlias = Literal[
     "spelling", "rephrase", "conflict", "remove_evidence",
     "irrelevant", "alter_facts", "shuffle", "truncate", "emoji", "negation_flip", "entity_substitution",
+    "metadata_injection",
 ]
 METHOD_ORDER = (
-    "rephrase", "spelling", "emoji", "negation_flip", "entity_substitution", "conflict", "remove_evidence",
-    "alter_facts", "truncate", "irrelevant", "shuffle",
+    "rephrase", "spelling", "emoji", "negation_flip", "entity_substitution", "conflict", "metadata_injection",
+    "remove_evidence", "alter_facts", "truncate", "irrelevant", "shuffle",
 )
-PRE_RETRIEVAL = {"rephrase", "spelling", "emoji", "conflict", "negation_flip", "entity_substitution"}
+# metadata_injection targets the retrieval stage: it adds a candidate document
+# before retrieval runs, so it must be treated as pre-retrieval like "conflict".
+PRE_RETRIEVAL = {"rephrase", "spelling", "emoji", "conflict", "negation_flip", "entity_substitution", "metadata_injection"}
 
 
 class PerturbationSettings(BaseModel):
@@ -30,6 +33,7 @@ class PerturbationSettings(BaseModel):
     emoji_style: Literal["insert", "substitute", "mixed"] = "mixed"
     emoji_count: int = Field(default=3, ge=1, le=20)
     emoji_position: Literal["prefix", "suffix", "between_words"] = "suffix"
+    metadata_term_count: int = Field(default=4, ge=1, le=10)
 
 
 def ordered_methods(methods):
@@ -157,6 +161,101 @@ def distractor_pool(dataset, question_id, original_contexts, query=""):
             pool.append({"title": doc["title"], "text": doc["text"],
                          "score": None, "source_question_id": row.get("id")})
     return pool
+
+
+# Common short words excluded when picking "salient" terms from a query, so we
+# tag distractors with meaningful keywords (subjects, names, numbers) rather
+# than function words like "the" or "what".
+_METADATA_STOPWORDS = {
+    "the", "a", "an", "is", "was", "are", "were", "of", "in", "to", "on",
+    "for", "with", "and", "or", "that", "this", "it", "its", "what", "who",
+    "whom", "which", "when", "where", "how", "why", "does", "do", "did",
+    "has", "have", "had", "be", "been", "being", "as", "at", "by", "from",
+    "than", "also", "into", "about",
+}
+
+
+def extract_salient_terms(query: str, max_terms: int = 4) -> list[str]:
+    """Pulls out the query's most distinctive words (proper nouns, numbers,
+    longer content words) to use as injectable 'topic metadata'."""
+    words = re.findall(r"[A-Za-z0-9]+", query)
+    seen = set()
+    terms = []
+    for word in words:
+        key = word.casefold()
+        if key in _METADATA_STOPWORDS or len(word) <= 3 or key in seen:
+            continue
+        seen.add(key)
+        terms.append(word)
+    return terms[:max_terms]
+
+
+def build_metadata_boosted_candidate(query, distractors, existing_docs, settings, rng):
+    """
+    Pre-retrieval perturbation targeting the RETRIEVAL stage specifically.
+
+    Selects one genuinely off-topic distractor passage and injects a synthetic
+    'topic metadata' tag -- built from the query's own salient terms -- into
+    its title and text. This mimics real documents that carry misleading
+    subject-line/keyword metadata, and tests whether embedding-based
+    retrieval can be fooled into ranking a substantively irrelevant passage
+    highly purely due to superficial lexical/embedding overlap with the
+    query, with no actual informative overlap in content.
+
+    Returns (candidate_dict_or_None, change_record).
+    """
+    terms = extract_salient_terms(query, settings.metadata_term_count)
+    if not terms:
+        return None, change_record(
+            "metadata_injection", "pre_retrieval", False,
+            "No salient query terms were available; candidates unchanged.",
+        )
+    if not distractors:
+        return None, change_record(
+            "metadata_injection", "pre_retrieval", False,
+            "No distractor passages were available; candidates unchanged.",
+        )
+
+    existing_titles = {d["title"].strip().casefold() for d in existing_docs}
+    existing_texts = {d["text"].strip().casefold() for d in existing_docs}
+    available = [
+        d for d in distractors
+        if d["title"].strip().casefold() not in existing_titles
+        and d["text"].strip().casefold() not in existing_texts
+    ]
+    if not available:
+        return None, change_record(
+            "metadata_injection", "pre_retrieval", False,
+            "No distinct distractor passages were available; candidates unchanged.",
+        )
+
+    chosen = rng.choice(available)
+    tag = " ".join(terms)
+    # "Synthetic_" prefix keeps this consistent with the existing "conflict"
+    # method's convention, so the dashboard's UI can flag it visually and it's
+    # excluded from any "clean baseline" filtering elsewhere.
+    boosted_title = f"Synthetic_MetadataBoosted: {tag}"
+    boosted_text = f"[Topic tags: {tag}] {chosen['text']}"
+
+    candidate = {
+        "title": boosted_title,
+        "text": boosted_text,
+        "score": None,
+        "source_question_id": chosen.get("source_question_id"),
+    }
+
+    summary = (
+        f"Injected topic metadata ({tag!r}) into an off-topic distractor passage "
+        f"(originally titled '{chosen['title']}') so it may be retrieved despite "
+        f"having no genuine informative overlap with the query."
+    )
+    details = [{
+        "injected_terms": terms,
+        "original_title": chosen["title"],
+        "boosted_title": boosted_title,
+        "source_question_id": chosen.get("source_question_id"),
+    }]
+    return candidate, change_record("metadata_injection", "pre_retrieval", True, summary, details)
 
 
 def apply_context_methods(contexts, methods, settings, seed, supporting_titles=None, distractors=None):
