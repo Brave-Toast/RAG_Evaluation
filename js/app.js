@@ -4,7 +4,7 @@
  */
 
 import { HOTPOTQA_DATASET, loadDatasetFromBackend, getQueryByIndex } from './dataset.js';
-import { executeBackendEvaluation, checkBackendHealth } from './ragEngine.js';
+import { executeBackendEvaluation, checkBackendHealth, fetchRepairOptions } from './ragEngine.js';
 import { loadHistoryFromStorage, saveHistoryToStorage, clearHistoryStorage, exportHistoryJSON, exportHistoryCSV } from './storage.js';
 import { PERTURBATION_LABELS, methodLabel } from './perturbations.js';
 import { renderContexts, updateMetricCards, updateHistoryUI, initChart, updateChart } from './uiManager.js';
@@ -33,10 +33,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     loadSelectedQuery();
     bindEventListeners();
+    await loadRepairOptions();
     updatePerturbationControls();
     
-    // 5. Run initial baseline evaluation
+    /***
+     5. Run initial baseline evaluation
+     
     executeEvaluation();
+    ***/
 });
 
 async function updateHeaderStatusBadge() {
@@ -139,6 +143,43 @@ function selectedMethods() {
     return Object.keys(PERTURBATION_LABELS).filter(method => checked.has(method));
 }
 
+// Builds one checkbox per repair registered in backend/repairs.py, so adding a fix needs no HTML changes.
+async function loadRepairOptions() {
+    const container = document.getElementById('repair-options');
+    if (!container) return;
+    const repairs = await fetchRepairOptions();
+    container.replaceChildren(...repairs.map(repair => {
+        const label = document.createElement('label');
+        label.className = 'flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'repair-method';
+        input.value = repair.name;
+        input.className = 'accent-indigo-500';
+        input.disabled = evaluationRunning;
+        const text = document.createElement('span');
+        text.className = 'ml-2.5';
+        const title = document.createElement('span');
+        title.className = 'block text-xs font-semibold text-white';
+        title.textContent = repair.name;
+        text.append(title);
+        if (repair.description) {
+            const description = document.createElement('span');
+            description.className = 'block text-[10px] text-slate-400';
+            description.textContent = repair.description;
+            text.append(description);
+        }
+        label.append(input, text);
+        return label;
+    }));
+    const empty = document.getElementById('repair-empty');
+    if (empty) empty.hidden = repairs.length > 0;
+}
+
+function selectedRepairs() {
+    return Array.from(document.querySelectorAll('input[name="repair-method"]:checked'), input => input.value);
+}
+
 function updatePerturbationControls() {
     const methods = selectedMethods();
     const separate = document.getElementById('evaluation-mode').value === 'separate';
@@ -210,7 +251,7 @@ function renderVariant(result) {
         const item = document.createElement('details');
         item.className = 'text-xs text-slate-300 bg-slate-950 p-2 rounded';
         const summary = document.createElement('summary');
-        summary.textContent = `${PERTURBATION_LABELS[change.method]}: ${change.status}: ${change.summary}`;
+        summary.textContent = `${PERTURBATION_LABELS[change.method] || change.method}: ${change.status}: ${change.summary}`;
         const detail = document.createElement('pre');
         detail.className = 'whitespace-pre-wrap break-words text-[11px] mt-2';
         detail.textContent = JSON.stringify(change.details, null, 2);
@@ -278,6 +319,7 @@ export async function executeEvaluation() {
             goldTitles: currentQueryObj.gold_titles || [],
             supportingTitles: customQuery ? null : currentQueryObj.supporting_titles,
             perturbationTypes: methods,
+            repairMethods: selectedRepairs(),
             mode: document.getElementById('evaluation-mode').value,
             settings: {...Object.fromEntries([
                 ['remove_evidence', 'remove_count', 'remove-count'],

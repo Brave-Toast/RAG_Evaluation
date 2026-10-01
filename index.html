@@ -111,6 +111,14 @@
                             <input type="checkbox" name="perturbation-type" value="emoji" class="accent-indigo-500">
                             <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Emoji perturbation</span><span class="block text-[10px] text-slate-400">Insert symbols or encode words and dates</span></span>
                         </label>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="negation_flip" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Negation flip</span><span class="block text-[10px] text-slate-400">Insert or remove a "not" to flip question polarity</span></span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="entity_substitution" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Entity substitution</span><span class="block text-[10px] text-slate-400">Swap a known entity for an unrelated one</span></span>
+                        </label>
                     </fieldset>
                     <fieldset class="space-y-2"><legend class="text-xs text-slate-400 mb-2">Document changes</legend>
                         <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
@@ -137,6 +145,10 @@
                             <input type="checkbox" name="perturbation-type" value="truncate" class="accent-indigo-500">
                             <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Truncate passages</span><span class="block text-[10px] text-slate-400">After retrieval; retain a percentage of text</span></span>
                         </label>
+                    </fieldset>
+                    <fieldset class="space-y-2"><legend class="text-xs text-slate-400 mb-2">Repairs (after retrieval, before the answer)</legend>
+                        <div id="repair-options" class="space-y-2"></div>
+                        <p id="repair-empty" class="text-[10px] text-slate-400">No repairs registered yet. Add one in backend/repairs.py and it appears here.</p>
                     </fieldset>
                     <div data-method-settings="spelling">
                         <label for="typo-rate-slider" class="text-xs text-slate-300">Typo severity: <span id="typo-rate-val">25%</span></label>

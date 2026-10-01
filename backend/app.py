@@ -4,6 +4,7 @@ Local LLM Integration (Ollama), and Granular Dense Vector Telemetry.
 """
 
 import os
+import re
 import json
 import random
 import math
@@ -25,12 +26,14 @@ if __package__:
     from .isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                     calculate_context_recall, calculate_context_precision,
                                     diagnose_failure)
+    from .repairs import apply_repair_methods, REPAIR_REGISTRY
 else:
     from perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis)
     from isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                   calculate_context_recall, calculate_context_precision,
                                   diagnose_failure)
+    from repairs import apply_repair_methods, REPAIR_REGISTRY
 
 app = FastAPI(
     title="Modular RAG Evaluation & Perturbation Backend API",
@@ -131,11 +134,12 @@ class EvaluationRequest(BaseModel):
     contexts: List[ContextDoc]
     gold_titles: Optional[List[str]] = Field(default_factory=list)
     perturbation_type: Method = "spelling"  # Legacy single-method requests remain supported.
-    perturbation_types: Optional[List[Method]] = Field(default=None, min_length=1, max_length=9)
+    perturbation_types: Optional[List[Method]] = Field(default=None, min_length=1, max_length=12)
     mode: Literal["combined", "separate"] = "combined"
     settings: PerturbationSettings = Field(default_factory=PerturbationSettings)
     seed: Optional[int] = Field(default=None, ge=0, le=2147483647)
     supporting_titles: Optional[List[str]] = None
+    repair_methods: Optional[List[str]] = None
     typo_rate: float = Field(default=0.25, ge=0, le=1)
     embedding_provider: str = "sentence-transformers/all-mpnet-base-v2"
     search_type: str = "similarity"  # "similarity" or "mmr"
@@ -796,7 +800,34 @@ def inject_spelling_typos(text: str, error_rate: float = 0.25, rng=None) -> str:
             result.append(word)
     return " ".join(result)
 
+NEGATION_AUX_PATTERN = re.compile(
+    r"\b(is|was|are|were|did|does|do|can|could|will|would|has|have|had)\b", re.IGNORECASE
+)
+NEGATION_WORD_PATTERN = re.compile(r"\bnot\b|n't", re.IGNORECASE)
 
+def inject_negation_flip(text: str) -> tuple[str, bool]:
+    """Flips a question's polarity: removes an existing negation, or inserts one after the first auxiliary verb."""
+    existing = NEGATION_WORD_PATTERN.search(text)
+    if existing:
+        flipped = (text[:existing.start()] + text[existing.end():]).replace("  ", " ").strip()
+        return flipped, True
+    aux = NEGATION_AUX_PATTERN.search(text)
+    if aux:
+        flipped = text[:aux.end()] + " not" + text[aux.end():]
+        return flipped, True
+    return text, False
+def inject_entity_substitution(text: str, candidate_titles: List[str], replacement_pool: List[Dict[str, Any]], rng) -> tuple[str, Optional[Dict[str, Any]]]:
+    """Swaps a named entity (a known document title mentioned in the question) for an unrelated one from another benchmark question."""
+    matches = [t for t in candidate_titles if t and t.lower() in text.lower()]
+    if not matches or not replacement_pool:
+        return text, None
+    original_entity = rng.choice(matches)
+    replacement_entity = rng.choice(replacement_pool)["title"]
+    pattern = re.compile(re.escape(original_entity), re.IGNORECASE)
+    new_text = pattern.sub(replacement_entity, text, count=1)
+    if new_text == text:
+        return text, None
+    return new_text, {"original_entity": original_entity, "replacement_entity": replacement_entity}
 def inject_conflicting_context(contexts: List[ContextDoc], query: str, ground_truth: str) -> List[ContextDoc]:
     """Injects a high-priority synthetic contradictory context passage."""
     conflict_doc = ContextDoc(
@@ -832,6 +863,16 @@ def health_check():
         "openai_configured": bool(OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE")
     }
 
+@app.get("/api/repairs")
+def list_repairs():
+    """Lists registered repair methods so the dashboard shows one checkbox per fix automatically."""
+    repairs = []
+    for name, fn in REPAIR_REGISTRY.items():
+        if name == "noop":  # test-only repair, keep it off the dashboard
+            continue
+        doc_lines = (getattr(fn, "__doc__", None) or "").strip().splitlines()
+        repairs.append({"name": name, "description": doc_lines[0] if doc_lines else ""})
+    return {"repairs": sorted(repairs, key=lambda r: r["name"])}
 
 @app.get("/api/dataset")
 def get_dataset():
@@ -953,6 +994,7 @@ def _copy_contexts(contexts):
 
 async def evaluation_events(req: EvaluationRequest):
     """One baseline per request; each variant starts with independent inputs."""
+    
     import uuid as uuid_module
 
     methods = ordered_methods(req.perturbation_types or [req.perturbation_type])
@@ -995,7 +1037,7 @@ async def evaluation_events(req: EvaluationRequest):
            "baseline_answer": baseline_answer, "baseline_generation_source": baseline_source,
            "gold_titles": gold_titles, "baseline_diagnosis": base_diag}
 
-    dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence"}.intersection(methods) else []
+    dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence", "entity_substitution"}.intersection(methods) else []
     supporting_titles = req.supporting_titles
     if supporting_titles is None and req.question_id and not req.custom_query:
         row = next((r for r in dataset if str(r.get("id")) == str(req.question_id)), {})
@@ -1025,6 +1067,19 @@ async def evaluation_events(req: EvaluationRequest):
         if "emoji" in selected:
             query, emoji_change = perturb_query_with_emojis(query, req.settings, seed)
             changes.append(emoji_change)
+        if "negation_flip" in selected:
+            before = query
+            query, flipped = inject_negation_flip(query)
+            changes.append(change_record("negation_flip", "pre_retrieval", flipped,
+                                         "Flipped question polarity." if flipped else "No negation word or auxiliary verb found; question unchanged.",
+                                         [{"original": before, "replacement": query}]))
+        if "entity_substitution" in selected:
+            before = query
+            candidate_titles = [c.title for c in clean] + gold_titles
+            query, sub_detail = inject_entity_substitution(query, candidate_titles, pool, method_rng(seed, "entity_substitution"))
+            changes.append(change_record("entity_substitution", "pre_retrieval", sub_detail is not None,
+                                         "Substituted a named entity in the question." if sub_detail else "No known entity found in the question, or no distractor pool available; question unchanged.",
+                                         [sub_detail] if sub_detail else []))
         if "conflict" in selected:
             candidates = inject_conflicting_context(candidates, query, req.ground_truth)
             changes.append(change_record("conflict", "pre_retrieval", True,
@@ -1043,6 +1098,12 @@ async def evaluation_events(req: EvaluationRequest):
         )
         changes.extend(context_changes)
         final_contexts = [ContextDoc(**doc) for doc in final_docs]
+        if req.repair_methods:
+            query, repaired_docs, repair_changes = apply_repair_methods(
+                query, [c.model_dump() for c in final_contexts], req.repair_methods
+            )
+            final_contexts = [ContextDoc(**doc) for doc in repaired_docs]
+            changes.extend(repair_changes)
         answer, answer_warning = await generate_llm_answer(
             query=query, contexts=_copy_contexts(final_contexts), model_choice=req.llm_model,
             ground_truth=req.ground_truth, gemini_api_key=req.gemini_api_key, is_perturbed=True,
