@@ -161,7 +161,7 @@ async function loadRepairOptions() {
         text.className = 'ml-2.5';
         const title = document.createElement('span');
         title.className = 'block text-xs font-semibold text-white';
-        title.textContent = repair.name;
+        title.textContent = repair.label || repair.name;
         text.append(title);
         if (repair.description) {
             const description = document.createElement('span');

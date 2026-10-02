@@ -871,7 +871,16 @@ def list_repairs():
         if name == "noop":  # test-only repair, keep it off the dashboard
             continue
         doc_lines = (getattr(fn, "__doc__", None) or "").strip().splitlines()
-        repairs.append({"name": name, "description": doc_lines[0] if doc_lines else ""})
+        labels = {
+            "contradiction_filter": "Contradiction Filter",
+            "fix_shuffle": "Fix Shuffled Documents",
+            "fix_truncate": "Fix Truncated Documents",
+        }
+        repairs.append({
+            "name": name,
+            "label": labels.get(name, name.replace("_", " ").title()),
+            "description": doc_lines[0] if doc_lines else "",
+        })
     return {"repairs": sorted(repairs, key=lambda r: r["name"])}
 
 @app.get("/api/dataset")
@@ -1099,8 +1108,13 @@ async def evaluation_events(req: EvaluationRequest):
         changes.extend(context_changes)
         final_contexts = [ContextDoc(**doc) for doc in final_docs]
         if req.repair_methods:
+            repair_config = {
+                # apply_context_methods() mutates copies, so this is the exact
+                # legitimate post-retrieval full-text source for restoration.
+                "full_contexts": [c.model_dump() for c in retrieved],
+            }
             query, repaired_docs, repair_changes = apply_repair_methods(
-                query, [c.model_dump() for c in final_contexts], req.repair_methods
+                query, [c.model_dump() for c in final_contexts], req.repair_methods, repair_config
             )
             final_contexts = [ContextDoc(**doc) for doc in repaired_docs]
             changes.extend(repair_changes)
