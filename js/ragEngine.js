@@ -26,6 +26,24 @@ export async function checkBackendHealth(backendUrl = DEFAULT_BACKEND_URL) {
 }
 
 /**
+ * Lists the repair methods registered in backend/repairs.py.
+ */
+export async function fetchRepairOptions(backendUrl = DEFAULT_BACKEND_URL) {
+    try {
+        const response = await fetch(`${backendUrl}/api/repairs`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (response.ok) {
+            return (await response.json()).repairs || [];
+        }
+    } catch (err) {
+        console.warn("Could not load repair methods:", err);
+    }
+    return [];
+}
+
+/**
  * Executes a full baseline vs perturbed RAG pipeline evaluation on the FastAPI backend.
  * Uses true ChromaDB vector retrieval (Similarity / MMR), sentence-transformers,
  * and local Ollama or cloud LLMs.
@@ -50,7 +68,7 @@ export async function executeBackendEvaluation(params) {
         settings: params.settings || {},
         seed: params.seed ?? null,
         supporting_titles: params.supportingTitles ?? null,
-        repair_methods: params.repairMethods || null,
+        repair_methods: params.repairMethods && params.repairMethods.length ? params.repairMethods : null,
         typo_rate: params.typoRate ?? 0.25,
         embedding_provider: params.embeddingProvider || 'sentence-transformers/all-mpnet-base-v2',
         search_type: params.searchType || 'similarity',

@@ -27,7 +27,7 @@ if __package__:
     from .isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                     calculate_context_recall, calculate_context_precision,
                                     diagnose_failure)
-    from .repairs import apply_repair_methods
+    from .repairs import apply_repair_methods, REPAIR_REGISTRY
 else:
     from perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis,
@@ -35,7 +35,7 @@ else:
     from isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                   calculate_context_recall, calculate_context_precision,
                                   diagnose_failure)
-    from repairs import apply_repair_methods
+    from repairs import apply_repair_methods, REPAIR_REGISTRY
 
 app = FastAPI(
     title="Modular RAG Evaluation & Perturbation Backend API",
@@ -783,6 +783,16 @@ def health_check():
         "gemini_configured": bool(os.environ.get("GEMINI_API_KEY"))
     }
 
+@app.get("/api/repairs")
+def list_repairs():
+    """Lists registered repair methods so the dashboard shows one checkbox per fix automatically."""
+    repairs = []
+    for name, fn in REPAIR_REGISTRY.items():
+        if name == "noop":  # test-only repair, keep it off the dashboard
+            continue
+        doc_lines = (getattr(fn, "__doc__", None) or "").strip().splitlines()
+        repairs.append({"name": name, "description": doc_lines[0] if doc_lines else ""})
+    return {"repairs": sorted(repairs, key=lambda r: r["name"])}
 
 @app.get("/api/dataset")
 def get_dataset():
