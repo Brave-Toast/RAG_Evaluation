@@ -18,6 +18,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 1. Perform backend health check & update header status badge
     updateHeaderStatusBadge();
     updateEmbeddingProviderAvailability();
+    updateLLMProviderAvailability();
     
     // 2. Fetch dynamic 50+ HotpotQA questions dataset from FastAPI backend
     await loadDatasetFromBackend();
@@ -68,6 +69,20 @@ async function updateEmbeddingProviderAvailability() {
     } else {
         openaiOption.disabled = true;
         openaiOption.textContent = "OpenAI / text-embedding-3-small (API Key Required)";
+    }
+}
+
+async function updateLLMProviderAvailability() {
+    const health = await checkBackendHealth();
+    const geminiOption = document.querySelector('#llm-model option[value="gemini-3-flash-preview"]');
+    if (!geminiOption) return;
+
+    if (health && health.gemini_configured) {
+        geminiOption.disabled = false;
+        geminiOption.textContent = "Gemini 3 Flash (Live Cloud)";
+    } else {
+        geminiOption.disabled = true;
+        geminiOption.textContent = "Gemini 3 Flash (Live Cloud) (API Key Required)";
     }
 }
 
@@ -430,6 +445,15 @@ export async function executeEvaluation() {
 
                             emoji_position:
                                 document.getElementById('emoji-position').value
+                        }
+                        : {}),
+
+                    ...(methods.includes('metadata_injection')
+                        ? {
+                            metadata_term_count:
+                                Number(
+                                    document.getElementById('metadata-term-count').value
+                                )
                         }
                         : {})
                 },

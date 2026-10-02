@@ -1,54 +1,67 @@
 # Conflicting-Context Repair Method — Detector Accuracy Findings
 
-**Method under test:** `contradiction_filter` (backend/repairs.py)
-**Sample size:** 20 questions x 3 cases (clean / conflict / metadata_injection)
+**Methods under test (backend/repairs.py):**
+- `contradiction_filter` ("full": title prefix + text markers)
+- `contradiction_filter_text_only` ("text_only": text markers only, no title label)
+
+**Sample:** 20 questions, seed 42. The original test (clean / conflict / metadata_injection)
+covers 640 documents, of which 40 are injected. The paraphrased-conflict case and a
+3-document adversarial false-positive set were added on top.
 
 ## Results
 
-| Metric | Value |
-|---|---|
-| True Positives | 40 |
-| False Negatives | 0 |
-| False Positives | 0 |
-| True Negatives | 600 |
-| Precision | 1.000 |
-| Recall | 1.000 |
-| F1 | 1.000 |
-| Accuracy | 1.000 |
+| Filter | Case | TP | FN | FP | TN | Precision | Recall |
+|---|---|---|---|---|---|---|---|
+| full | clean | 0 | 0 | 0 | 200 | n/a | n/a |
+| full | conflict | 20 | 0 | 0 | 200 | 1.000 | 1.000 |
+| full | paraphrased_conflict | 0 | 20 | 0 | 200 | n/a | 0.000 |
+| full | metadata_injection | 20 | 0 | 0 | 200 | 1.000 | 1.000 |
+| full | adversarial_clean | 0 | 0 | 3 | 0 | 0.000 | n/a |
+| full | original test (clean+conflict+metadata) | 40 | 0 | 0 | 600 | 1.000 | 1.000 |
+| text_only | clean | 0 | 0 | 0 | 200 | n/a | n/a |
+| text_only | conflict | 20 | 0 | 0 | 200 | 1.000 | 1.000 |
+| text_only | paraphrased_conflict | 0 | 20 | 0 | 200 | n/a | 0.000 |
+| text_only | metadata_injection | 20 | 0 | 0 | 200 | 1.000 | 1.000 |
+| text_only | adversarial_clean | 0 | 0 | 2 | 1 | 0.000 | n/a |
+| text_only | original test (clean+conflict+metadata) | 40 | 0 | 0 | 600 | 1.000 | 1.000 |
+
+## What the results say
+
+- **The original test is easy.** The detector looks for exact strings that our own
+  generators insert (the `Synthetic` title, `conflicting modern sources`, `refute that`,
+  `alternative facts`, `[Topic tags:`), so a near-perfect score on that test mainly shows
+  the filter matches our own generators. With 0 misses out of 40 injected documents, the true recall is only known to be at least about 92% (95% confidence), not exactly 100%.
+- **Paraphrased conflicts are the realistic test.** Recall on conflicting documents that avoid those
+  keywords was 0.000 (full filter) and 0.000 (text-only filter).
+- **False positives on genuine text:** on 3 genuine passages the full filter wrongly removed
+  3 and the text-only filter wrongly removed 2. The title rule
+  (`startswith("synthetic")`) can remove real articles such as "Synthetic biology".
+- **Metadata injection is a different perturbation.** It adds an off-topic passage made to look relevant,
+  not a contradiction, so it is reported on its own row.
+
+## Failure examples
+
+- **Missed (full filter, paraphrased_conflict):** title `Regional_Archive_Note`, text: "Recent scholarship on 'What U.S Highway gives access to Zilpo Road, and is also known as Midland Trail?' suggests the commonly cited answer, 'US 60', is mistaken. Newly reviewed records point to a different conclusion."
+- **Missed (text_only filter, paraphrased_conflict):** title `Regional_Archive_Note`, text: "Recent scholarship on 'What U.S Highway gives access to Zilpo Road, and is also known as Midland Trail?' suggests the commonly cited answer, 'US 60', is mistaken. Newly reviewed records point to a different conclusion."
+- **Wrongly removed (full filter, adversarial_clean):** a genuine document titled `Synthetic biology`
+- **Wrongly removed (text_only filter, adversarial_clean):** a genuine document titled `Cold fusion controversy`
 
 ## How the detector works
 
-Two signals, checked per document:
-1. **Title prefix "Synthetic"** — a strong, cheap signal, but it's just this
-   framework's own internal naming convention for injected test documents.
-   Relying on it alone would trivially score ~100% here and wouldn't tell us
-   anything about real-world detection.
-2. **Suspicious phrasing in the document text** — regex match on injected
-   wording used by our own perturbations (`"conflicting modern sources"`,
-   `"refute that"`, `"alternative facts"`, `"[Topic tags:"`). This is the
-   more meaningful signal, since it's the kind of heuristic that could
-   plausibly generalize beyond our own naming convention.
+1. **Title prefix "Synthetic"** — our own internal naming convention for test documents (a label, not content).
+2. **Suspicious phrasing in the text** — regex for wording our perturbations insert.
 
 ## Limitations
 
-- This is a **lexical/pattern-based** detector, not a semantic one. A
-  differently-worded conflicting document (e.g. one that contradicts the
-  ground truth without using words like "refute" or "conflicting") would
-  likely evade it — a real false negative risk in production use, not just
-  in this synthetic test.
-- The "clean" case only measures false positives against real HotpotQA
-  passages, which are unlikely to naturally contain phrases like "conflicting
-  modern sources." A more adversarial false-positive test (e.g. real
-  passages that legitimately discuss disputes/contradictions/retractions)
-  would be a more meaningful next step.
-- The metadata-injection signal check (`"[Topic tags:"`) is tightly coupled
-  to our own injection format in `perturbations.py`; if that format changes,
-  this detector needs to be updated alongside it.
+- This is a lexical/pattern-based detector, not a semantic one. It did not detect
+  reworded conflicting documents (see the paraphrased_conflict rows).
+- The marker list is tied to our own injection formats in `perturbations.py` and `app.py`;
+  if those change, the detector must change too.
+- The adversarial false-positive set is small and hand-written, so it shows failure modes
+  rather than a reliable false-positive rate.
 
 ## Suggested next steps
 
-- Add an adversarial false-positive test set (real documents about disputed
-  facts, contradicted claims, or retracted findings) to get a more honest
-  precision estimate.
-- Consider a semantic/NLI-based check as a second layer for documents that
-  pass the lexical filter, to catch reworded conflicting content.
+- Add a semantic/NLI-based second layer to catch reworded conflicting content.
+- Build a larger false-positive set from real passages about disputes, corrections and retractions.
+- Replace the title rule with a content-based check, since the prefix can match real articles.

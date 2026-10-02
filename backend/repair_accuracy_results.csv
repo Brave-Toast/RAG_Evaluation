@@ -1,61 +1,163 @@
-question_id,case,tp,fn,fp,tn,note
-5ab381b155429969a97a816b,clean,0,0,0,10,
-5ab381b155429969a97a816b,conflict,1,0,0,10,
-5ab381b155429969a97a816b,metadata_injection,1,0,0,10,
-5a82171f5542990a1d231f4a,clean,0,0,0,10,
-5a82171f5542990a1d231f4a,conflict,1,0,0,10,
-5a82171f5542990a1d231f4a,metadata_injection,1,0,0,10,
-5a8ce5c7554299441c6b9f64,clean,0,0,0,10,
-5a8ce5c7554299441c6b9f64,conflict,1,0,0,10,
-5a8ce5c7554299441c6b9f64,metadata_injection,1,0,0,10,
-5a7a02235542996c55b2dcd3,clean,0,0,0,10,
-5a7a02235542996c55b2dcd3,conflict,1,0,0,10,
-5a7a02235542996c55b2dcd3,metadata_injection,1,0,0,10,
-5a8efd3c55429918e830d179,clean,0,0,0,10,
-5a8efd3c55429918e830d179,conflict,1,0,0,10,
-5a8efd3c55429918e830d179,metadata_injection,1,0,0,10,
-5adc1309554299438c868d3b,clean,0,0,0,10,
-5adc1309554299438c868d3b,conflict,1,0,0,10,
-5adc1309554299438c868d3b,metadata_injection,1,0,0,10,
-5ade025e5542997dc790711e,clean,0,0,0,10,
-5ade025e5542997dc790711e,conflict,1,0,0,10,
-5ade025e5542997dc790711e,metadata_injection,1,0,0,10,
-172f8cab8f0bf3c31eafb466,clean,0,0,0,10,
-172f8cab8f0bf3c31eafb466,conflict,1,0,0,10,
-172f8cab8f0bf3c31eafb466,metadata_injection,1,0,0,10,
-5aba66c855429939ce03dcdb,clean,0,0,0,10,
-5aba66c855429939ce03dcdb,conflict,1,0,0,10,
-5aba66c855429939ce03dcdb,metadata_injection,1,0,0,10,
-5c7f9fa33abdfb95233586f0,clean,0,0,0,10,
-5c7f9fa33abdfb95233586f0,conflict,1,0,0,10,
-5c7f9fa33abdfb95233586f0,metadata_injection,1,0,0,10,
-5a84dd955542997b5ce3ff79,clean,0,0,0,10,
-5a84dd955542997b5ce3ff79,conflict,1,0,0,10,
-5a84dd955542997b5ce3ff79,metadata_injection,1,0,0,10,
-1f84fc375cbb66657cd58795,clean,0,0,0,10,
-1f84fc375cbb66657cd58795,conflict,1,0,0,10,
-1f84fc375cbb66657cd58795,metadata_injection,1,0,0,10,
-8eb6d05179cddabaa2421a2e,clean,0,0,0,10,
-8eb6d05179cddabaa2421a2e,conflict,1,0,0,10,
-8eb6d05179cddabaa2421a2e,metadata_injection,1,0,0,10,
-5ae3918b5542994393b9e709,clean,0,0,0,10,
-5ae3918b5542994393b9e709,conflict,1,0,0,10,
-5ae3918b5542994393b9e709,metadata_injection,1,0,0,10,
-5a8b63755542997f31a41cfe,clean,0,0,0,10,
-5a8b63755542997f31a41cfe,conflict,1,0,0,10,
-5a8b63755542997f31a41cfe,metadata_injection,1,0,0,10,
-6c609fec30038c826ad9c932,clean,0,0,0,10,
-6c609fec30038c826ad9c932,conflict,1,0,0,10,
-6c609fec30038c826ad9c932,metadata_injection,1,0,0,10,
-f21eb412d82e35a146162cc9,clean,0,0,0,10,
-f21eb412d82e35a146162cc9,conflict,1,0,0,10,
-f21eb412d82e35a146162cc9,metadata_injection,1,0,0,10,
-b7ca136c0037423c79c95eef,clean,0,0,0,10,
-b7ca136c0037423c79c95eef,conflict,1,0,0,10,
-b7ca136c0037423c79c95eef,metadata_injection,1,0,0,10,
-5a7722d655429966f1a36c99,clean,0,0,0,10,
-5a7722d655429966f1a36c99,conflict,1,0,0,10,
-5a7722d655429966f1a36c99,metadata_injection,1,0,0,10,
-5a7a52745542996c55b2dd4f,clean,0,0,0,10,
-5a7a52745542996c55b2dd4f,conflict,1,0,0,10,
-5a7a52745542996c55b2dd4f,metadata_injection,1,0,0,10,
+question_id,variant,case,tp,fn,fp,tn,note
+5ab381b155429969a97a816b,full,clean,0,0,0,10,
+5ab381b155429969a97a816b,full,conflict,1,0,0,10,
+5ab381b155429969a97a816b,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5ab381b155429969a97a816b,full,metadata_injection,1,0,0,10,
+5ab381b155429969a97a816b,text_only,clean,0,0,0,10,
+5ab381b155429969a97a816b,text_only,conflict,1,0,0,10,
+5ab381b155429969a97a816b,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5ab381b155429969a97a816b,text_only,metadata_injection,1,0,0,10,
+5a82171f5542990a1d231f4a,full,clean,0,0,0,10,
+5a82171f5542990a1d231f4a,full,conflict,1,0,0,10,
+5a82171f5542990a1d231f4a,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5a82171f5542990a1d231f4a,full,metadata_injection,1,0,0,10,
+5a82171f5542990a1d231f4a,text_only,clean,0,0,0,10,
+5a82171f5542990a1d231f4a,text_only,conflict,1,0,0,10,
+5a82171f5542990a1d231f4a,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5a82171f5542990a1d231f4a,text_only,metadata_injection,1,0,0,10,
+5a8ce5c7554299441c6b9f64,full,clean,0,0,0,10,
+5a8ce5c7554299441c6b9f64,full,conflict,1,0,0,10,
+5a8ce5c7554299441c6b9f64,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5a8ce5c7554299441c6b9f64,full,metadata_injection,1,0,0,10,
+5a8ce5c7554299441c6b9f64,text_only,clean,0,0,0,10,
+5a8ce5c7554299441c6b9f64,text_only,conflict,1,0,0,10,
+5a8ce5c7554299441c6b9f64,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5a8ce5c7554299441c6b9f64,text_only,metadata_injection,1,0,0,10,
+5a7a02235542996c55b2dcd3,full,clean,0,0,0,10,
+5a7a02235542996c55b2dcd3,full,conflict,1,0,0,10,
+5a7a02235542996c55b2dcd3,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5a7a02235542996c55b2dcd3,full,metadata_injection,1,0,0,10,
+5a7a02235542996c55b2dcd3,text_only,clean,0,0,0,10,
+5a7a02235542996c55b2dcd3,text_only,conflict,1,0,0,10,
+5a7a02235542996c55b2dcd3,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5a7a02235542996c55b2dcd3,text_only,metadata_injection,1,0,0,10,
+5a8efd3c55429918e830d179,full,clean,0,0,0,10,
+5a8efd3c55429918e830d179,full,conflict,1,0,0,10,
+5a8efd3c55429918e830d179,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5a8efd3c55429918e830d179,full,metadata_injection,1,0,0,10,
+5a8efd3c55429918e830d179,text_only,clean,0,0,0,10,
+5a8efd3c55429918e830d179,text_only,conflict,1,0,0,10,
+5a8efd3c55429918e830d179,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5a8efd3c55429918e830d179,text_only,metadata_injection,1,0,0,10,
+5adc1309554299438c868d3b,full,clean,0,0,0,10,
+5adc1309554299438c868d3b,full,conflict,1,0,0,10,
+5adc1309554299438c868d3b,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5adc1309554299438c868d3b,full,metadata_injection,1,0,0,10,
+5adc1309554299438c868d3b,text_only,clean,0,0,0,10,
+5adc1309554299438c868d3b,text_only,conflict,1,0,0,10,
+5adc1309554299438c868d3b,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5adc1309554299438c868d3b,text_only,metadata_injection,1,0,0,10,
+5ade025e5542997dc790711e,full,clean,0,0,0,10,
+5ade025e5542997dc790711e,full,conflict,1,0,0,10,
+5ade025e5542997dc790711e,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5ade025e5542997dc790711e,full,metadata_injection,1,0,0,10,
+5ade025e5542997dc790711e,text_only,clean,0,0,0,10,
+5ade025e5542997dc790711e,text_only,conflict,1,0,0,10,
+5ade025e5542997dc790711e,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5ade025e5542997dc790711e,text_only,metadata_injection,1,0,0,10,
+172f8cab8f0bf3c31eafb466,full,clean,0,0,0,10,
+172f8cab8f0bf3c31eafb466,full,conflict,1,0,0,10,
+172f8cab8f0bf3c31eafb466,full,paraphrased_conflict,0,1,0,10,injected doc missed
+172f8cab8f0bf3c31eafb466,full,metadata_injection,1,0,0,10,
+172f8cab8f0bf3c31eafb466,text_only,clean,0,0,0,10,
+172f8cab8f0bf3c31eafb466,text_only,conflict,1,0,0,10,
+172f8cab8f0bf3c31eafb466,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+172f8cab8f0bf3c31eafb466,text_only,metadata_injection,1,0,0,10,
+5aba66c855429939ce03dcdb,full,clean,0,0,0,10,
+5aba66c855429939ce03dcdb,full,conflict,1,0,0,10,
+5aba66c855429939ce03dcdb,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5aba66c855429939ce03dcdb,full,metadata_injection,1,0,0,10,
+5aba66c855429939ce03dcdb,text_only,clean,0,0,0,10,
+5aba66c855429939ce03dcdb,text_only,conflict,1,0,0,10,
+5aba66c855429939ce03dcdb,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5aba66c855429939ce03dcdb,text_only,metadata_injection,1,0,0,10,
+5c7f9fa33abdfb95233586f0,full,clean,0,0,0,10,
+5c7f9fa33abdfb95233586f0,full,conflict,1,0,0,10,
+5c7f9fa33abdfb95233586f0,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5c7f9fa33abdfb95233586f0,full,metadata_injection,1,0,0,10,
+5c7f9fa33abdfb95233586f0,text_only,clean,0,0,0,10,
+5c7f9fa33abdfb95233586f0,text_only,conflict,1,0,0,10,
+5c7f9fa33abdfb95233586f0,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5c7f9fa33abdfb95233586f0,text_only,metadata_injection,1,0,0,10,
+5a84dd955542997b5ce3ff79,full,clean,0,0,0,10,
+5a84dd955542997b5ce3ff79,full,conflict,1,0,0,10,
+5a84dd955542997b5ce3ff79,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5a84dd955542997b5ce3ff79,full,metadata_injection,1,0,0,10,
+5a84dd955542997b5ce3ff79,text_only,clean,0,0,0,10,
+5a84dd955542997b5ce3ff79,text_only,conflict,1,0,0,10,
+5a84dd955542997b5ce3ff79,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5a84dd955542997b5ce3ff79,text_only,metadata_injection,1,0,0,10,
+1f84fc375cbb66657cd58795,full,clean,0,0,0,10,
+1f84fc375cbb66657cd58795,full,conflict,1,0,0,10,
+1f84fc375cbb66657cd58795,full,paraphrased_conflict,0,1,0,10,injected doc missed
+1f84fc375cbb66657cd58795,full,metadata_injection,1,0,0,10,
+1f84fc375cbb66657cd58795,text_only,clean,0,0,0,10,
+1f84fc375cbb66657cd58795,text_only,conflict,1,0,0,10,
+1f84fc375cbb66657cd58795,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+1f84fc375cbb66657cd58795,text_only,metadata_injection,1,0,0,10,
+8eb6d05179cddabaa2421a2e,full,clean,0,0,0,10,
+8eb6d05179cddabaa2421a2e,full,conflict,1,0,0,10,
+8eb6d05179cddabaa2421a2e,full,paraphrased_conflict,0,1,0,10,injected doc missed
+8eb6d05179cddabaa2421a2e,full,metadata_injection,1,0,0,10,
+8eb6d05179cddabaa2421a2e,text_only,clean,0,0,0,10,
+8eb6d05179cddabaa2421a2e,text_only,conflict,1,0,0,10,
+8eb6d05179cddabaa2421a2e,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+8eb6d05179cddabaa2421a2e,text_only,metadata_injection,1,0,0,10,
+5ae3918b5542994393b9e709,full,clean,0,0,0,10,
+5ae3918b5542994393b9e709,full,conflict,1,0,0,10,
+5ae3918b5542994393b9e709,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5ae3918b5542994393b9e709,full,metadata_injection,1,0,0,10,
+5ae3918b5542994393b9e709,text_only,clean,0,0,0,10,
+5ae3918b5542994393b9e709,text_only,conflict,1,0,0,10,
+5ae3918b5542994393b9e709,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5ae3918b5542994393b9e709,text_only,metadata_injection,1,0,0,10,
+5a8b63755542997f31a41cfe,full,clean,0,0,0,10,
+5a8b63755542997f31a41cfe,full,conflict,1,0,0,10,
+5a8b63755542997f31a41cfe,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5a8b63755542997f31a41cfe,full,metadata_injection,1,0,0,10,
+5a8b63755542997f31a41cfe,text_only,clean,0,0,0,10,
+5a8b63755542997f31a41cfe,text_only,conflict,1,0,0,10,
+5a8b63755542997f31a41cfe,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5a8b63755542997f31a41cfe,text_only,metadata_injection,1,0,0,10,
+6c609fec30038c826ad9c932,full,clean,0,0,0,10,
+6c609fec30038c826ad9c932,full,conflict,1,0,0,10,
+6c609fec30038c826ad9c932,full,paraphrased_conflict,0,1,0,10,injected doc missed
+6c609fec30038c826ad9c932,full,metadata_injection,1,0,0,10,
+6c609fec30038c826ad9c932,text_only,clean,0,0,0,10,
+6c609fec30038c826ad9c932,text_only,conflict,1,0,0,10,
+6c609fec30038c826ad9c932,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+6c609fec30038c826ad9c932,text_only,metadata_injection,1,0,0,10,
+f21eb412d82e35a146162cc9,full,clean,0,0,0,10,
+f21eb412d82e35a146162cc9,full,conflict,1,0,0,10,
+f21eb412d82e35a146162cc9,full,paraphrased_conflict,0,1,0,10,injected doc missed
+f21eb412d82e35a146162cc9,full,metadata_injection,1,0,0,10,
+f21eb412d82e35a146162cc9,text_only,clean,0,0,0,10,
+f21eb412d82e35a146162cc9,text_only,conflict,1,0,0,10,
+f21eb412d82e35a146162cc9,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+f21eb412d82e35a146162cc9,text_only,metadata_injection,1,0,0,10,
+b7ca136c0037423c79c95eef,full,clean,0,0,0,10,
+b7ca136c0037423c79c95eef,full,conflict,1,0,0,10,
+b7ca136c0037423c79c95eef,full,paraphrased_conflict,0,1,0,10,injected doc missed
+b7ca136c0037423c79c95eef,full,metadata_injection,1,0,0,10,
+b7ca136c0037423c79c95eef,text_only,clean,0,0,0,10,
+b7ca136c0037423c79c95eef,text_only,conflict,1,0,0,10,
+b7ca136c0037423c79c95eef,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+b7ca136c0037423c79c95eef,text_only,metadata_injection,1,0,0,10,
+5a7722d655429966f1a36c99,full,clean,0,0,0,10,
+5a7722d655429966f1a36c99,full,conflict,1,0,0,10,
+5a7722d655429966f1a36c99,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5a7722d655429966f1a36c99,full,metadata_injection,1,0,0,10,
+5a7722d655429966f1a36c99,text_only,clean,0,0,0,10,
+5a7722d655429966f1a36c99,text_only,conflict,1,0,0,10,
+5a7722d655429966f1a36c99,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5a7722d655429966f1a36c99,text_only,metadata_injection,1,0,0,10,
+5a7a52745542996c55b2dd4f,full,clean,0,0,0,10,
+5a7a52745542996c55b2dd4f,full,conflict,1,0,0,10,
+5a7a52745542996c55b2dd4f,full,paraphrased_conflict,0,1,0,10,injected doc missed
+5a7a52745542996c55b2dd4f,full,metadata_injection,1,0,0,10,
+5a7a52745542996c55b2dd4f,text_only,clean,0,0,0,10,
+5a7a52745542996c55b2dd4f,text_only,conflict,1,0,0,10,
+5a7a52745542996c55b2dd4f,text_only,paraphrased_conflict,0,1,0,10,injected doc missed
+5a7a52745542996c55b2dd4f,text_only,metadata_injection,1,0,0,10,
+n/a,full,adversarial_clean,0,0,3,0,"genuine doc removed: Synthetic biology, Cold fusion controversy, Post-truth politics"
+n/a,text_only,adversarial_clean,0,0,2,1,"genuine doc removed: Cold fusion controversy, Post-truth politics"

@@ -22,14 +22,16 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 if __package__:
     from .perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
-                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis)
+                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis,
+                                build_metadata_boosted_candidate)
     from .isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                     calculate_context_recall, calculate_context_precision,
                                     diagnose_failure)
     from .repairs import apply_repair_methods
 else:
     from perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
-                               method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis)
+                               method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis,
+                               build_metadata_boosted_candidate)
     from isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                   calculate_context_recall, calculate_context_precision,
                                   diagnose_failure)
@@ -765,7 +767,8 @@ def health_check():
         ],
         "vector_store": "ChromaDB (LangChain)" if CHROMA_AVAILABLE else "Dense Vector Distance",
         "ollama_support": True,
-        "openai_configured": bool(OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE")
+        "openai_configured": bool(OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE"),
+        "gemini_configured": bool(os.environ.get("GEMINI_API_KEY"))
     }
 
 
@@ -932,7 +935,7 @@ async def evaluation_events(req: EvaluationRequest):
            "baseline_answer": baseline_answer, "baseline_generation_source": baseline_source,
            "gold_titles": gold_titles, "baseline_diagnosis": base_diag}
 
-    dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence", "entity_substitution"}.intersection(methods) else []
+    dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence", "entity_substitution", "metadata_injection"}.intersection(methods) else []
     supporting_titles = req.supporting_titles
     if supporting_titles is None and req.question_id and not req.custom_query:
         row = next((r for r in dataset if str(r.get("id")) == str(req.question_id)), {})
@@ -975,6 +978,13 @@ async def evaluation_events(req: EvaluationRequest):
             changes.append(change_record("entity_substitution", "pre_retrieval", sub_detail is not None,
                                          "Substituted a named entity in the question." if sub_detail else "No known entity found in the question, or no distractor pool available; question unchanged.",
                                          [sub_detail] if sub_detail else []))
+        if "metadata_injection" in selected:
+            meta_candidate, meta_change = build_metadata_boosted_candidate(
+                query, pool, [c.model_dump() for c in candidates], req.settings, method_rng(seed, "metadata_injection"),
+            )
+            changes.append(meta_change)
+            if meta_candidate:
+                candidates = [ContextDoc(**meta_candidate)] + candidates
         if "conflict" in selected:
             candidates = inject_conflicting_context(candidates, query, req.ground_truth)
             changes.append(change_record("conflict", "pre_retrieval", True,

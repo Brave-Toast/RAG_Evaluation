@@ -42,7 +42,7 @@ def repair_noop(query, contexts):
     return query, contexts, {"method": "noop", "status": "applied", "summary": "no changes made (test repair)"}
 
 
-# --- Conflicting-Context Repair Method (RS-44 / metadata injection ticket) ---
+# --- Conflicting-Context Repair Method (RS-57) ---
 #
 # Detects documents that look like they were fabricated by our own conflict
 # or metadata-injection perturbations (see perturbations.py:
@@ -60,6 +60,9 @@ def repair_noop(query, contexts):
 #      meaningful signal to evaluate, since it's the kind of heuristic that
 #      could plausibly catch similar injected content even without the
 #      "Synthetic" title marker attached.
+#
+# A second filter, "contradiction_filter_text_only", uses signal 2 only, so
+# test_repair_accuracy.py can show how much the title label contributes.
 #
 # See test_repair_accuracy.py for a precision/recall evaluation of this
 # detector against both injected and genuine (unperturbed) documents.
@@ -111,5 +114,23 @@ def repair_contradiction_filter(query, contexts):
         "status": status,
         "summary": summary,
         "details": {"removed_titles": removed_titles, "remaining_count": len(kept)},
+    }
+    return query, kept, record
+
+
+@register_repair("contradiction_filter_text_only")
+def repair_contradiction_filter_text_only(query, contexts):
+    """Same as contradiction_filter but ignores the title, so it checks text only."""
+    kept, removed = [], []
+    for doc in contexts:
+        if _INJECTION_TEXT_MARKERS.search(doc.get("text") or ""):
+            removed.append(doc.get("title", "untitled"))
+        else:
+            kept.append(doc)
+    record = {
+        "method": "contradiction_filter_text_only",
+        "status": "applied" if removed else "skipped",
+        "summary": f"Removed {len(removed)} document(s) using text markers only.",
+        "details": {"removed_titles": removed, "remaining_count": len(kept)},
     }
     return query, kept, record
