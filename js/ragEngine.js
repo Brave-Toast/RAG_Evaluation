@@ -50,6 +50,7 @@ export async function executeBackendEvaluation(params) {
         settings: params.settings || {},
         seed: params.seed ?? null,
         supporting_titles: params.supportingTitles ?? null,
+        repair_methods: params.repairMethods || null,
         typo_rate: params.typoRate ?? 0.25,
         embedding_provider: params.embeddingProvider || 'sentence-transformers/all-mpnet-base-v2',
         search_type: params.searchType || 'similarity',

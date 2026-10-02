@@ -130,7 +130,7 @@ class EvaluationRequest(BaseModel):
     contexts: List[ContextDoc]
     gold_titles: Optional[List[str]] = Field(default_factory=list)
     perturbation_type: Method = "spelling"  # Legacy single-method requests remain supported.
-    perturbation_types: Optional[List[Method]] = Field(default=None, min_length=1, max_length=9)
+    perturbation_types: Optional[List[Method]] = Field(default=None, min_length=1, max_length=12)
     mode: Literal["combined", "separate"] = "combined"
     settings: PerturbationSettings = Field(default_factory=PerturbationSettings)
     seed: Optional[int] = Field(default=None, ge=0, le=2147483647)
@@ -324,10 +324,13 @@ def compute_dense_embedding(text: str, provider: str = "sentence-transformers/al
                         if emb:
                             return np.array(emb, dtype=np.float32)
             except Exception as e:
-                print(f"Ollama embeddings error for '{model_name}': {e}")
+                raise RuntimeError(f"Ollama embeddings failed for '{model_name}': {e}") from e
         else:
-            print(f"Notice: could not use ollama model '{model_name}', falling back.")
-# 1b. OpenAI embeddings
+            raise RuntimeError(f"Ollama model '{model_name}' is not available; refusing to fall back to a different embedding model.")
+    if provider and provider.startswith("ollama/"):
+        # Reaching this point means Ollama returned no embedding; never fall through to another model.
+        raise RuntimeError(f"Ollama returned no embedding for '{provider}'; refusing to fall back to a different model.")
+    # 1b. OpenAI embeddings
     if provider and provider.startswith("openai/"):
         model_name = provider.replace("openai/", "")
         if OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE":
@@ -746,6 +749,15 @@ def inject_conflicting_context(contexts: List[ContextDoc], query: str, ground_tr
     return [conflict_doc] + [c for c in contexts]
 
 
+def _ollama_reachable() -> bool:
+    """True if the local Ollama service answers (used by /api/health)."""
+    try:
+        with httpx.Client(timeout=1.0) as client:
+            return client.get("http://localhost:11434/api/tags").status_code == 200
+    except Exception:
+        return False
+
+
 @app.get("/api/health")
 def health_check():
     """Returns backend status, active embedding models, and vector retrieval capabilities."""
@@ -766,7 +778,7 @@ def health_check():
             "synthetic-evaluator"
         ],
         "vector_store": "ChromaDB (LangChain)" if CHROMA_AVAILABLE else "Dense Vector Distance",
-        "ollama_support": True,
+        "ollama_support": _ollama_reachable(),
         "openai_configured": bool(OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE"),
         "gemini_configured": bool(os.environ.get("GEMINI_API_KEY"))
     }
@@ -847,7 +859,9 @@ def evaluate_metrics(req, baseline_query, perturbed_query, baseline_contexts,
     # E. Mathematical Error Amplification Factor
     retrieval_loss = max(0.0, 1.0 - retrieval_sim)
     generation_loss = max(0.0, 1.0 - generation_sim)
-    amplification_factor = generation_loss / (retrieval_loss + 0.00001)
+    # If the final context is effectively unchanged, the ratio is meaningless (answer drift comes from
+    # model/prompt noise, not the perturbation), so report 0 instead of an exploding value.
+    amplification_factor = 0.0 if retrieval_loss < 0.01 else min(generation_loss / retrieval_loss, 50.0)
 
     # Status Classification
     if generation_sim > retrieval_sim + 0.08:

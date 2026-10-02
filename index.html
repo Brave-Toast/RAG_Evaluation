@@ -150,6 +150,10 @@
                             <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Truncate passages</span><span class="block text-[10px] text-slate-400">After retrieval; retain a percentage of text</span></span>
                         </label>
                     </fieldset>
+                    <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                        <input type="checkbox" id="repair-filter" class="accent-indigo-500">
+                        <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Contradiction filter (repair)</span><span class="block text-[10px] text-slate-400">After retrieval; removes suspected injected documents before generation</span></span>
+                    </label>
                     <div data-method-settings="spelling">
                         <label for="typo-rate-slider" class="text-xs text-slate-300">Typo severity: <span id="typo-rate-val">25%</span></label>
                         <input type="range" id="typo-rate-slider" min="0" max="100" step="5" value="25" class="w-full accent-indigo-500">

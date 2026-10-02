@@ -19,6 +19,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     updateHeaderStatusBadge();
     updateEmbeddingProviderAvailability();
     updateLLMProviderAvailability();
+    updateOllamaAvailability();
     
     // 2. Fetch dynamic 50+ HotpotQA questions dataset from FastAPI backend
     await loadDatasetFromBackend();
@@ -84,6 +85,20 @@ async function updateLLMProviderAvailability() {
         geminiOption.disabled = true;
         geminiOption.textContent = "Gemini 3 Flash (Live Cloud) (API Key Required)";
     }
+}
+
+/**
+ * Disables the local Ollama embedding option when the Ollama service is not reachable,
+ * so a "nomic" run cannot be started against a service that is down.
+ */
+async function updateOllamaAvailability() {
+    const health = await checkBackendHealth();
+    const offline = !(health && health.ollama_support);
+    document.querySelectorAll('#embedding-provider option[value^="ollama/"]').forEach(opt => {
+        const base = opt.textContent.replace(/ \(Ollama not running\)$/, '');
+        opt.disabled = offline;
+        opt.textContent = offline ? `${base} (Ollama not running)` : base;
+    });
 }
 
 function initQuerySelect() {
@@ -338,7 +353,11 @@ function renderVariant(result) {
         retrieval_rank_shift_jaccard: metrics.retrieval_rank_shift_jaccard,
         context_construction_loss: metrics.context_construction_loss,
         generation_vs_gt_baseline: metrics.generation_vs_gt_baseline,
-        generation_vs_gt_perturbed: metrics.generation_vs_gt_perturbed
+        generation_vs_gt_perturbed: metrics.generation_vs_gt_perturbed,
+        failure_attribution: metrics.failure_attribution,
+        failure_root_cause: metrics.failure_root_cause,
+        context_recall_perturbed: metrics.context_recall_perturbed,
+        answer_f1_perturbed: metrics.answer_f1_perturbed
     });
 }
 
@@ -410,6 +429,7 @@ export async function executeEvaluation() {
                         : currentQueryObj.supporting_titles,
 
                 perturbationTypes: methods,
+                repairMethods: document.getElementById('repair-filter')?.checked ? ['contradiction_filter'] : null,
 
                 mode:
                     document.getElementById('evaluation-mode').value,
