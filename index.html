@@ -126,6 +126,10 @@
                             <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Conflicting context</span><span class="block text-[10px] text-slate-400">Add a contradictory candidate before retrieval</span></span>
                         </label>
                         <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
+                            <input type="checkbox" name="perturbation-type" value="metadata_injection" class="accent-indigo-500">
+                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Metadata injection</span><span class="block text-[10px] text-slate-400">Before retrieval; tags an off-topic passage with query keywords</span></span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
                             <input type="checkbox" name="perturbation-type" value="remove_evidence" class="accent-indigo-500">
                             <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Remove supporting evidence</span><span class="block text-[10px] text-slate-400">After retrieval; falls back to highest-ranked passage</span></span>
                         </label>
@@ -172,6 +176,10 @@
                             </select>
                         </div>
                         <p class="text-[10px] text-slate-400">before → b4️⃣ · great → gr8️⃣ · 2026 → 2️⃣0️⃣2️⃣6️⃣. One word/date replacement counts as one edit. Word encodings can introduce ambiguity.</p>
+                    </div>
+                    <div data-method-settings="metadata_injection" hidden>
+                        <label for="metadata-term-count" class="block text-xs text-slate-300 mb-1">Injected keyword count</label>
+                        <input id="metadata-term-count" type="number" value="4" min="1" max="10" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
                     </div>
                     <div data-method-settings="remove_evidence" hidden>
                         <label for="remove-count" class="block text-xs text-slate-300 mb-1">Passages to remove</label>

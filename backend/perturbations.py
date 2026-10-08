@@ -172,35 +172,47 @@ _METADATA_STOPWORDS = {
     "whom", "which", "when", "where", "how", "why", "does", "do", "did",
     "has", "have", "had", "be", "been", "being", "as", "at", "by", "from",
     "than", "also", "into", "about",
+    # generic question wording that says nothing about the topic
+    "started", "start", "called", "known", "name", "named", "both", "same",
 }
 
 
 def extract_salient_terms(query: str, max_terms: int = 4) -> list[str]:
-    """Pulls out the query's most distinctive words (proper nouns, numbers,
-    longer content words) to use as injectable 'topic metadata'."""
+    """Return the query's most distinctive words, in their original order.
+
+    Ranking: proper nouns / acronyms / numbers > sentence-initial capitalised words
+    > longer lowercase content words.
+    """
     words = re.findall(r"[A-Za-z0-9]+", query)
+    scored = []
     seen = set()
-    terms = []
-    for word in words:
+    for pos, word in enumerate(words):
         key = word.casefold()
-        if key in _METADATA_STOPWORDS or len(word) <= 3 or key in seen:
+        if key in _METADATA_STOPWORDS or key in seen:
+            continue
+        is_number = word.isdigit() and len(word) >= 2
+        is_acronym = word.isupper() and len(word) >= 2 and not word.isdigit()
+        if len(word) <= 3 and not (is_number or is_acronym):
             continue
         seen.add(key)
-        terms.append(word)
-    return terms[:max_terms]
+        if is_number or is_acronym:
+            score = 3.0
+        elif word[0].isupper():
+            score = 1.5 if pos == 0 else 3.0
+        else:
+            score = 1.0 + min(len(word), 12) / 24
+        scored.append((score, pos, word))
+    best = sorted(scored, key=lambda item: (-item[0], item[1]))[:max_terms]
+    return [word for _, _, word in sorted(best, key=lambda item: item[1])]
 
 
 def build_metadata_boosted_candidate(query, distractors, existing_docs, settings, rng):
     """
-    Pre-retrieval perturbation targeting the RETRIEVAL stage specifically.
+    Pre-retrieval perturbation targeting the RETRIEVAL stage.
 
-    Selects one genuinely off-topic distractor passage and injects a synthetic
-    'topic metadata' tag -- built from the query's own salient terms -- into
-    its title and text. This mimics real documents that carry misleading
-    subject-line/keyword metadata, and tests whether embedding-based
-    retrieval can be fooled into ranking a substantively irrelevant passage
-    highly purely due to superficial lexical/embedding overlap with the
-    query, with no actual informative overlap in content.
+    Picks one genuinely off-topic distractor passage and prepends strong, query-derived
+    'topic metadata' to its TEXT (the title tag is only for the UI and the repair filter).
+    The passage body is untouched, so it carries no real answer content.
 
     Returns (candidate_dict_or_None, change_record).
     """
@@ -229,13 +241,27 @@ def build_metadata_boosted_candidate(query, distractors, existing_docs, settings
             "No distinct distractor passages were available; candidates unchanged.",
         )
 
-    chosen = rng.choice(available)
+    # Prefer "hard" distractors: other questions' passages that share the most words with
+    # this query (still off-topic, no answer content). Random choice among the top 5 keeps
+    # seeds meaningful.
+    query_words = {w.casefold() for w in re.findall(r"[A-Za-z0-9]+", query) if len(w) > 3}
+
+    def overlap(doc):
+        words = {w.casefold() for w in re.findall(r"[A-Za-z0-9]+", doc["title"] + " " + doc["text"])}
+        return len(words & query_words)
+
+    ranked = sorted(available, key=lambda d: (-overlap(d), d["title"]))
+    chosen = rng.choice(ranked[:5])
     tag = " ".join(terms)
-    # "Synthetic_" prefix keeps this consistent with the existing "conflict"
-    # method's convention, so the dashboard's UI can flag it visually and it's
-    # excluded from any "clean baseline" filtering elsewhere.
     boosted_title = f"Synthetic_MetadataBoosted: {tag}"
-    boosted_text = f"[Topic tags: {tag}] {chosen['text']}"
+    header = (
+        f"[Topic tags: {tag}] "
+        f"Topic: {tag}. This passage is about {tag}. "
+        f"Keywords: {', '.join(terms)}. "
+    )
+    # Keep only the first sentence of the distractor so the metadata dominates the embedding.
+    body = re.split(r"(?<=[.!?])\s+", chosen["text"].strip(), maxsplit=1)[0][:150]
+    boosted_text = header + body
 
     candidate = {
         "title": boosted_title,
@@ -243,7 +269,6 @@ def build_metadata_boosted_candidate(query, distractors, existing_docs, settings
         "score": None,
         "source_question_id": chosen.get("source_question_id"),
     }
-
     summary = (
         f"Injected topic metadata ({tag!r}) into an off-topic distractor passage "
         f"(originally titled '{chosen['title']}') so it may be retrieved despite "
@@ -254,6 +279,8 @@ def build_metadata_boosted_candidate(query, distractors, existing_docs, settings
         "original_title": chosen["title"],
         "boosted_title": boosted_title,
         "source_question_id": chosen.get("source_question_id"),
+        "strength": "strong",
+        "body_truncated": True,
     }]
     return candidate, change_record("metadata_injection", "pre_retrieval", True, summary, details)
 

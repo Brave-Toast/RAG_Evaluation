@@ -18,6 +18,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 1. Perform backend health check & update header status badge
     updateHeaderStatusBadge();
     updateEmbeddingProviderAvailability();
+    updateLLMProviderAvailability();
+    updateOllamaAvailability();
     
     // 2. Fetch dynamic 50+ HotpotQA questions dataset from FastAPI backend
     await loadDatasetFromBackend();
@@ -74,6 +76,34 @@ async function updateEmbeddingProviderAvailability() {
         openaiOption.disabled = true;
         openaiOption.textContent = "OpenAI / text-embedding-3-small (API Key Required)";
     }
+}
+
+async function updateLLMProviderAvailability() {
+    const health = await checkBackendHealth();
+    const geminiOption = document.querySelector('#llm-model option[value="gemini-3-flash-preview"]');
+    if (!geminiOption) return;
+
+    if (health && health.gemini_configured) {
+        geminiOption.disabled = false;
+        geminiOption.textContent = "Gemini 3 Flash (Live Cloud)";
+    } else {
+        geminiOption.disabled = true;
+        geminiOption.textContent = "Gemini 3 Flash (Live Cloud) (API Key Required)";
+    }
+}
+
+/**
+ * Disables the local Ollama embedding option when the Ollama service is not reachable,
+ * so a "nomic" run cannot be started against a service that is down.
+ */
+async function updateOllamaAvailability() {
+    const health = await checkBackendHealth();
+    const offline = !(health && health.ollama_support);
+    document.querySelectorAll('#embedding-provider option[value^="ollama/"]').forEach(opt => {
+        const base = opt.textContent.replace(/ \(Ollama not running\)$/, '');
+        opt.disabled = offline;
+        opt.textContent = offline ? `${base} (Ollama not running)` : base;
+    });
 }
 
 function initQuerySelect() {
@@ -331,6 +361,9 @@ export async function executeEvaluation() {
                     emoji_style: document.getElementById('emoji-style').value,
                     emoji_count: Number(document.getElementById('emoji-count').value),
                     emoji_position: document.getElementById('emoji-position').value
+                } : {}),
+                ...(methods.includes('metadata_injection') ? {
+                    metadata_term_count: Number(document.getElementById('metadata-term-count').value)
                 } : {})
             },
             seed: seedText === '' ? null : Number(seedText),

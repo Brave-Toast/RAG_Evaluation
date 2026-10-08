@@ -22,14 +22,16 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 if __package__:
     from .perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
-                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis)
+                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis,
+                                build_metadata_boosted_candidate)
     from .isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                     calculate_context_recall, calculate_context_precision,
                                     diagnose_failure)
     from .repairs import apply_repair_methods, REPAIR_REGISTRY
 else:
     from perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
-                               method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis)
+                               method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis,
+                               build_metadata_boosted_candidate)
     from isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                   calculate_context_recall, calculate_context_precision,
                                   diagnose_failure)
@@ -335,10 +337,13 @@ def compute_dense_embedding(text: str, provider: str = "sentence-transformers/al
                         if emb:
                             return normalize_vector(emb)
             except Exception as e:
-                print(f"Ollama embeddings error for '{model_name}': {e}")
+                raise RuntimeError(f"Ollama embeddings failed for '{model_name}': {e}") from e
         else:
-            print(f"Notice: could not use ollama model '{model_name}', falling back.")
-# 1b. OpenAI embeddings
+            raise RuntimeError(f"Ollama model '{model_name}' is not available; refusing to fall back to a different embedding model.")
+    if provider and provider.startswith("ollama/"):
+        # Reaching this point means Ollama returned no embedding; never fall through to another model.
+        raise RuntimeError(f"Ollama returned no embedding for '{provider}'; refusing to fall back to a different model.")
+    # 1b. OpenAI embeddings
     if provider and provider.startswith("openai/"):
         model_name = provider.replace("openai/", "")
         if OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE":
@@ -838,6 +843,15 @@ def inject_conflicting_context(contexts: List[ContextDoc], query: str, ground_tr
     return [conflict_doc] + [c for c in contexts]
 
 
+def _ollama_reachable() -> bool:
+    """True if the local Ollama service answers (used by /api/health)."""
+    try:
+        with httpx.Client(timeout=1.0) as client:
+            return client.get("http://localhost:11434/api/tags").status_code == 200
+    except Exception:
+        return False
+
+
 @app.get("/api/health")
 def health_check():
     """Returns backend status, active embedding models, and vector retrieval capabilities."""
@@ -859,8 +873,9 @@ def health_check():
             "synthetic-evaluator"
         ],
         "vector_store": "ChromaDB (LangChain)" if CHROMA_AVAILABLE else "Dense Vector Distance",
-        "ollama_support": True,
-        "openai_configured": bool(OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE")
+        "ollama_support": _ollama_reachable(),
+        "openai_configured": bool(OPENAI_API_KEY and OPENAI_API_KEY != "YOUR_OPENAI_API_KEY_HERE"),
+        "gemini_configured": bool(os.environ.get("GEMINI_API_KEY"))
     }
 
 @app.get("/api/repairs")
@@ -958,7 +973,9 @@ def evaluate_metrics(req, baseline_query, perturbed_query, baseline_contexts,
     # E. Mathematical Error Amplification Factor
     retrieval_loss = max(0.0, 1.0 - retrieval_sim)
     generation_loss = max(0.0, 1.0 - generation_sim)
-    amplification_factor = generation_loss / (retrieval_loss + 0.00001)
+    # If the final context is effectively unchanged, the ratio is meaningless (answer drift comes from
+    # model/prompt noise, not the perturbation), so report 0 instead of an exploding value.
+    amplification_factor = 0.0 if retrieval_loss < 0.01 else min(generation_loss / retrieval_loss, 50.0)
 
     # Status Classification
     if generation_sim > retrieval_sim + 0.08:
@@ -1046,7 +1063,7 @@ async def evaluation_events(req: EvaluationRequest):
            "baseline_answer": baseline_answer, "baseline_generation_source": baseline_source,
            "gold_titles": gold_titles, "baseline_diagnosis": base_diag}
 
-    dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence", "entity_substitution"}.intersection(methods) else []
+    dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence", "entity_substitution", "metadata_injection"}.intersection(methods) else []
     supporting_titles = req.supporting_titles
     if supporting_titles is None and req.question_id and not req.custom_query:
         row = next((r for r in dataset if str(r.get("id")) == str(req.question_id)), {})
@@ -1089,6 +1106,13 @@ async def evaluation_events(req: EvaluationRequest):
             changes.append(change_record("entity_substitution", "pre_retrieval", sub_detail is not None,
                                          "Substituted a named entity in the question." if sub_detail else "No known entity found in the question, or no distractor pool available; question unchanged.",
                                          [sub_detail] if sub_detail else []))
+        if "metadata_injection" in selected:
+            meta_candidate, meta_change = build_metadata_boosted_candidate(
+                query, pool, [c.model_dump() for c in candidates], req.settings, method_rng(seed, "metadata_injection"),
+            )
+            changes.append(meta_change)
+            if meta_candidate:
+                candidates = [ContextDoc(**meta_candidate)] + candidates
         if "conflict" in selected:
             candidates = inject_conflicting_context(candidates, query, req.ground_truth)
             changes.append(change_record("conflict", "pre_retrieval", True,

@@ -10,6 +10,7 @@ export const PERTURBATION_LABELS = {
     negation_flip: 'Negation flip',
     entity_substitution: 'Entity substitution',
     conflict: 'Conflicting context',
+    metadata_injection: 'Metadata injection',
     remove_evidence: 'Remove supporting evidence',
     alter_facts: 'Alter facts',
     truncate: 'Truncate passages',
