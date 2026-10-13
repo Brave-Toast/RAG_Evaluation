@@ -44,6 +44,25 @@ export async function fetchRepairOptions(backendUrl = DEFAULT_BACKEND_URL) {
 }
 
 /**
+ * Lists the rerankers the backend supports (SUPPORTED_RERANKERS in app.py), for the dropdown.
+ */
+export async function fetchRerankerOptions(backendUrl = DEFAULT_BACKEND_URL) {
+    //same idea as fetchRepairOptions, add a model in app.py n it shows up in the dropdown automaticly
+    try {
+        const response = await fetch(`${backendUrl}/api/rerankers`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (err) {
+        console.warn("Could not load rerankers:", err);
+    }
+    return { default: null, rerankers: [] };
+}
+
+/**
  * Executes a full baseline vs perturbed RAG pipeline evaluation on the FastAPI backend.
  * Uses true ChromaDB vector retrieval (Similarity / MMR), sentence-transformers,
  * and local Ollama or cloud LLMs.
@@ -73,6 +92,8 @@ export async function executeBackendEvaluation(params) {
         embedding_provider: params.embeddingProvider || 'sentence-transformers/all-mpnet-base-v2',
         search_type: params.searchType || 'similarity',
         top_k: parseInt(params.topK, 10) || 2,
+        use_reranker: !!params.useReranker,  //checkbox on/off, !! makes sure its true/false not undefined
+        ...(params.useReranker && params.rerankerModel ? { reranker_model: params.rerankerModel } : {}),  //only send the model wen reranker is on, otherwise backend uses its default
         llm_model: params.llmModel || 'ollama/qwen3.5:9b',
         gemini_api_key: params.geminiApiKey || window.GEMINI_API_KEY || null
     };

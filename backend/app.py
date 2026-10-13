@@ -660,10 +660,12 @@ def rerank_docs(query:str,docs:List[ContextDoc],top_k:int,model_name:str=DEFAULT
     pairs=[(query,d.text) for d in docs]
     raw_scores=model.predict(pairs)
     ranked=sorted(zip(docs,raw_scores),key=lambda x:float(x[1]),reverse=True)[:min(top_k,len(docs))]
+    #some models (ms marco) give raw logits that can be negitive or >1, others (bge) already come out as 0-1 probs
+    #only squash the logit ones, otherwise bge scores get sigmoided twice n all show as 0.731
+    is_logits=any(float(s)<0 or float(s)>1 for s in raw_scores)
     out=[]
     for d,s in ranked:
-        #some models give raw logits (can be negitive), sigmoid squashes to 0-1 so it lines up wit the other scores on the dashbord
-        prob=1.0/(1.0+math.exp(-float(s)))
+        prob=1.0/(1.0+math.exp(-float(s))) if is_logits else float(s)
         out.append(ContextDoc(title=d.title,text=d.text,score=round(prob,4)))
     return out
 

@@ -4,7 +4,7 @@
  */
 
 import { HOTPOTQA_DATASET, loadDatasetFromBackend, getQueryByIndex } from './dataset.js';
-import { executeBackendEvaluation, checkBackendHealth, fetchRepairOptions } from './ragEngine.js';
+import { executeBackendEvaluation, checkBackendHealth, fetchRepairOptions, fetchRerankerOptions } from './ragEngine.js';
 import { loadHistoryFromStorage, saveHistoryToStorage, clearHistoryStorage, exportHistoryJSON, exportHistoryCSV } from './storage.js';
 import { PERTURBATION_LABELS, methodLabel } from './perturbations.js';
 import { renderContexts, updateMetricCards, updateHistoryUI, initChart, updateChart } from './uiManager.js';
@@ -36,6 +36,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadSelectedQuery();
     bindEventListeners();
     await loadRepairOptions();
+    await loadRerankerOptions();
     updatePerturbationControls();
     
     /***
@@ -210,6 +211,32 @@ function selectedRepairs() {
     return Array.from(document.querySelectorAll('input[name="repair-method"]:checked'), input => input.value);
 }
 
+
+//fills the reranker dropdown from /api/rerankers, same idea as loadRepairOptions
+async function loadRerankerOptions() {
+    const select = document.getElementById('reranker-model');
+    if (!select) return;
+    const data = await fetchRerankerOptions();
+    select.replaceChildren(...data.rerankers.map(r => {
+        const opt = document.createElement('option');
+        opt.value = r.name;
+        opt.textContent = r.label || r.name;
+        return opt;
+    }));
+    if (data.default) select.value = data.default;  //start on the recomended one (bge base)
+    document.getElementById('use-reranker')?.addEventListener('change', syncRerankerControls);
+    syncRerankerControls();
+}
+
+//dropdown only usable wen the checkbox is ticked, n never while a run is going
+function syncRerankerControls() {
+    const box = document.getElementById('use-reranker');
+    const select = document.getElementById('reranker-model');
+    if (!box || !select) return;
+    box.disabled = evaluationRunning || !select.options.length;  //no models loaded = backend offline, so cant turn it on
+    select.disabled = evaluationRunning || !box.checked;
+}
+
 function updatePerturbationControls() {
     const methods = selectedMethods();
     const separate = document.getElementById('evaluation-mode').value === 'separate';
@@ -372,6 +399,8 @@ export async function executeEvaluation() {
             embeddingProvider: document.getElementById('embedding-provider').value,
             searchType: document.getElementById('search-type').value,
             topK: Number(document.getElementById('top-k').value),
+            useReranker: document.getElementById('use-reranker').checked,
+            rerankerModel: document.getElementById('reranker-model').value,
             llmModel: document.getElementById('llm-model').value,
             onEvent: event => {
                 if (event.event === 'progress') document.getElementById('evaluation-progress').textContent = event.message;
@@ -414,6 +443,8 @@ export async function executeEvaluation() {
                 llmModel: document.getElementById('llm-model').value,
                 searchType: document.getElementById('search-type').value,
                 topK: Number(document.getElementById('top-k').value),
+                useReranker: document.getElementById('use-reranker').checked,
+                rerankerModel: document.getElementById('use-reranker').checked ? document.getElementById('reranker-model').value : null,
                 result: variant
             });
         }
@@ -430,5 +461,6 @@ export async function executeEvaluation() {
         document.querySelectorAll('aside input, aside select, aside button').forEach(input => { input.disabled = false; });
         runBtn.innerHTML = '<i class="fa-solid fa-play"></i> <span>Run Evaluation Pipeline</span>';
         updatePerturbationControls();
+        syncRerankerControls();  //finally re-enables evrything, so grey the dropdown out again if reranker is unticked
     }
 }

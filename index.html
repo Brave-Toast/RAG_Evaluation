@@ -229,13 +229,24 @@
                             <div class="grid grid-cols-2 gap-2">
                                 <select id="search-type" class="bg-slate-800 border border-slate-700 rounded p-1.5 text-slate-200">
                                     <option value="similarity">Similarity</option>
-                                    <option value="mmr">MMR (Re-rank)</option>
+                                    <option value="mmr">MMR (Diverse)</option>
                                 </select>
                                 <div class="flex items-center space-x-1 bg-slate-800 border border-slate-700 rounded px-2">
                                     <span class="text-[10px] text-slate-400">Top K:</span>
                                     <input type="number" id="top-k" value="2" min="1" max="5" class="w-full bg-transparent text-center font-bold text-white focus:outline-none">
                                 </div>
                             </div>
+                        </div>
+
+                        <div>
+                            <span class="text-slate-400 mb-1 block">Reranking Stage</span>
+                            <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer mb-2">
+                                <input type="checkbox" id="use-reranker" class="accent-indigo-500">
+                                <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Use reranker</span><span class="block text-[10px] text-slate-400">Retriever grabs 10 candidates, cross-encoder keeps the best Top K</span></span>
+                            </label>
+                            <select id="reranker-model" disabled class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200">
+                                <!-- filled from /api/rerankers by app.js -->
+                            </select>
                         </div>
 
                         <div>

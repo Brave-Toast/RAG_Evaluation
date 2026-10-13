@@ -12,13 +12,13 @@ function stageColor(stage){
     const c={"NONE":"bg-emerald-500/20 text-emerald-300 border-emerald-500/30","SUCCESS":"bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
         "QUERY":"bg-purple-500/20 text-purple-300 border-purple-500/30",
         "RETRIEVAL":"bg-rose-500/20 text-rose-300 border-rose-500/30","RETRIEVAL_FAILURE":"bg-rose-500/20 text-rose-300 border-rose-500/30",
+        "RERANKING":"bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
         "CONTEXT":"bg-amber-500/20 text-amber-300 border-amber-500/30",
         "GENERATION":"bg-orange-500/20 text-orange-300 border-orange-500/30","GENERATION_FAILURE":"bg-orange-500/20 text-orange-300 border-orange-500/30",
         "PARAMETRIC_LEAKAGE":"bg-blue-500/20 text-blue-300 border-blue-500/30"}
     return c[stage]||"bg-slate-800 text-slate-400 border-slate-700"
 }
-// if failure at Query stage, then the color is Purple, at Retrievasl Red, Context Amber, Geenration Orange, and No Failure Green
-
+// if failure at Query stage, then the color is Purple, at Retrieval Red, Reranking Cyan, Context Amber, Generation Orange, and No Failure Green
 /**
  * Renders context cards into a target container.
  * @param {string} containerId 
@@ -50,7 +50,7 @@ export function renderContexts(containerId, contexts) {
             <div class="flex items-center justify-between font-bold mb-1.5 text-[11px]">
                 <span class="${isConflictDoc ? 'text-rose-400' : 'text-indigo-400'} truncate mr-2">[Doc ${i+1}] ${escapeHTML(c.title)}</span>
                 <div class="flex items-center gap-1.5 shrink-0">
-                    ${hasScore ? `<span class="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="ChromaDB Relevance Score"><i class="fa-solid fa-bullseye text-[8px] mr-1"></i>Score: ${scoreVal}</span>` : ''}
+                    ${hasScore ? `<span class="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="Relevance score (retriever, or reranker when on)"><i class="fa-solid fa-bullseye text-[8px] mr-1"></i>Score: ${scoreVal}</span>` : ''}
                     ${isConflictDoc ? '<span class="text-[9px] bg-rose-500/20 px-1.5 py-0.5 rounded text-rose-300">' + (isMetadataDoc ? 'Metadata Injected' : 'Conflicting Injected') + '</span>' : ''}
                 </div>
             </div>
