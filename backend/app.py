@@ -13,7 +13,7 @@ import asyncio
 from typing import List, Optional, Dict, Any, Literal
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import numpy as np
 import httpx
 
@@ -82,6 +82,15 @@ ENSEMBLE_COMPONENT_PROVIDERS = (
     "ollama/nomic-embed-text",
 )
 
+#all the rerankers we support, model name -> label for the dashbord dropdown
+#add new ones here n evrything else (validation, dropdown) picks them up automaticly
+SUPPORTED_RERANKERS={
+    "cross-encoder/ms-marco-MiniLM-L-6-v2":"MiniLM-L6 (small, ~90mb)",
+    "BAAI/bge-reranker-base":"BGE base (recommended, ~1.1gb)",
+    "BAAI/bge-reranker-v2-m3":"BGE v2 m3 (largest, ~2.2gb)",
+}
+DEFAULT_RERANKER="BAAI/bge-reranker-base"  #wat gets used when reranker is on n no model is picked
+
 def get_sentence_transformer(model_name: str = "sentence-transformers/all-mpnet-base-v2"):
     """Loads or retrieves cached SentenceTransformer model instance."""
     normalized_name = model_name.replace("huggingface/", "").strip()
@@ -146,8 +155,18 @@ class EvaluationRequest(BaseModel):
     embedding_provider: str = "sentence-transformers/all-mpnet-base-v2"
     search_type: str = "similarity"  # "similarity" or "mmr"
     top_k: int = Field(default=2, ge=1, le=5)
+    use_reranker: bool = False  #cross encoder rerank after retrieval, off by deflt so old runs dont change
+    rerank_fetch_k: int = Field(default=10, ge=1, le=20)  #how many candiates retriver grabs b4 reranker picks top_k
+    reranker_model: str = DEFAULT_RERANKER  #wich reranker to use when its on, must be one from SUPPORTED_RERANKERS
     llm_model: str = "ollama/qwen3.5:9b"  # "ollama/qwen3.5:9b", "ollama/llama3", "ollama/mistral", "gemini-3-flash-preview", "synthetic-evaluator"
     gemini_api_key: Optional[str] = None
+    @field_validator("reranker_model")
+    @classmethod
+    def check_reranker(cls,v):
+        #reject unknown model names b4 anything runs, otherwise a typo wud try to download some random model
+        if v not in SUPPORTED_RERANKERS:
+            raise ValueError(f"unknown reranker '{v}', pick one of {list(SUPPORTED_RERANKERS)}")
+        return v
 
 
 class IngestRequest(BaseModel):
@@ -609,6 +628,54 @@ def perform_vector_retrieval(
             ) for item in scored[:k_val]
         ]
 
+# reranker stage - cross encoder reads the questoin n doc TOGETHER and scores how well the doc answers it
+# retriever is fast but rough (question n doc embeded seperately), reranker is slow but more carefull
+# so we only run it on the few candiates the retriever already picked
+_RERANKERS={}  #cache by model name so swapping rerankers dosnt reload evry time
+
+def get_reranker(name=DEFAULT_RERANKER):
+    #load once per model n keep it in memory, downloads from huggingface first time if not cached
+    if name in _RERANKERS:
+        return _RERANKERS[name]
+    try:
+        from sentence_transformers import CrossEncoder
+        print(f"Loading reranker '{name}'...")
+        #max_length 512 keeps the big models fast, hotpot passages r short anyway so nothing gets cut
+        _RERANKERS[name]=CrossEncoder(name,max_length=512)
+        print(f"reranker '{name}' loaded")
+    except Exception as e:
+        print(f"Notice: couldnt load reranker '{name}': {e}")
+        return None
+    return _RERANKERS[name]
+
+def rerank_docs(query:str,docs:List[ContextDoc],top_k:int,model_name:str=DEFAULT_RERANKER)->List[ContextDoc]:
+    #scores evry (question,doc) pair then keeps the best top_k
+    if not docs:
+        return []
+    model=get_reranker(model_name)
+    if model is None:
+        #dont silently skip it, otherwise a run says reranker on but it actualy wasnt n results get mixed up
+        raise RuntimeError(f"reranker '{model_name}' not available, refusing to silently skip the rerank stage")
+    #text only, same as wat chroma embeds for the retriver, otherwise reranker sees extra stuff (incl test labels in titles) the retriver never saw
+    pairs=[(query,d.text) for d in docs]
+    raw_scores=model.predict(pairs)
+    ranked=sorted(zip(docs,raw_scores),key=lambda x:float(x[1]),reverse=True)[:min(top_k,len(docs))]
+    out=[]
+    for d,s in ranked:
+        #some models give raw logits (can be negitive), sigmoid squashes to 0-1 so it lines up wit the other scores on the dashbord
+        prob=1.0/(1.0+math.exp(-float(s)))
+        out.append(ContextDoc(title=d.title,text=d.text,score=round(prob,4)))
+    return out
+
+def retrieve_docs(docs,query,req):
+    #single entry point for retrieval so baseline n perturbed runs go thru the exact same stages
+    #reranker off = normal retrieval, returns (top_k docs, None)
+    #reranker on = grab fetch_k candiates first then reranker picks top_k, returns (top_k docs, the candiates b4 rerank)
+    if not req.use_reranker:
+        return perform_vector_retrieval(docs,query,req.search_type,req.top_k,req.embedding_provider),None
+    fetch_k=max(req.rerank_fetch_k,req.top_k)
+    pool=perform_vector_retrieval(docs,query,req.search_type,fetch_k,req.embedding_provider)
+    return rerank_docs(query,pool,req.top_k,req.reranker_model),pool
 
 async def generate_llm_answer(
     query: str, 
@@ -901,6 +968,14 @@ def list_repairs():
         })
     return {"repairs": sorted(repairs, key=lambda r: r["name"])}
 
+@app.get("/api/rerankers")
+def list_rerankers():
+    #dashbord calls this to fill the reranker dropdown, same idea as /api/repairs
+    return {
+        "default": DEFAULT_RERANKER,
+        "rerankers": [{"name": name, "label": label} for name, label in SUPPORTED_RERANKERS.items()],
+    }
+
 @app.get("/api/dataset")
 def get_dataset():
     """Serves the HotpotQA benchmark evaluation questions."""
@@ -1087,9 +1162,9 @@ async def evaluation_events(req: EvaluationRequest):
                 break
 
     yield {"event": "progress", "message": "Running shared baseline", "total": len(groups)}
-    baseline_contexts = await asyncio.to_thread(
-        perform_vector_retrieval, _copy_contexts(clean), baseline_query,
-        req.search_type, req.top_k, req.embedding_provider,
+    #goes thru retrieve_docs so baseline gets reranked too when its on, otherwise comparision isnt fair
+    baseline_contexts,baseline_pool = await asyncio.to_thread(
+        retrieve_docs, _copy_contexts(clean), baseline_query, req,
     )
     baseline_answer, baseline_warning = await generate_llm_answer(
         query=baseline_query, contexts=_copy_contexts(baseline_contexts),
@@ -1172,12 +1247,14 @@ async def evaluation_events(req: EvaluationRequest):
                                          [candidates[0].model_dump()]))
 
         if PRE_RETRIEVAL.intersection(selected):
-            retrieved = await asyncio.to_thread(
-                perform_vector_retrieval, candidates, query, req.search_type, req.top_k, req.embedding_provider,
+            #same retrieve_docs as baseline so perturbed run gets the exact same stages
+            retrieved,pert_pool = await asyncio.to_thread(
+                retrieve_docs, candidates, query, req,
             )
         else:
             # Post-retrieval experiments use exactly the baseline retrieval output.
             retrieved = _copy_contexts(baseline_contexts)
+            pert_pool=baseline_pool #post retrieval perturbs reuse baseline retrieval so the pool is the same to
         final_docs, context_changes = apply_context_methods(
             [c.model_dump() for c in retrieved], selected, req.settings, seed, supporting_titles, pool,
         )
@@ -1247,6 +1324,17 @@ async def evaluation_events(req: EvaluationRequest):
                     "baseline_final": [c.model_dump() for c in baseline_contexts],
                     "perturbed_final": final_docs,
                 },
+                #rerank stage - wat the retriver grabbed b4 rerank (pool) vs wat the reranker actualy kept
+                #pool scores r retriver scores, kept docs r the ones that went to the llm
+                "rerank_stage": {
+                    "enabled": req.use_reranker,
+                    "model": req.reranker_model if req.use_reranker else None,
+                    "fetch_k": req.rerank_fetch_k if req.use_reranker else None,
+                    "baseline_pool": [{"title":c.title,"score":c.score} for c in baseline_pool] if baseline_pool else None,
+                    "baseline_kept": [c.title for c in baseline_contexts],
+                    "perturbed_pool": [{"title":c.title,"score":c.score} for c in pert_pool] if pert_pool else None,
+                    "perturbed_kept": [c.title for c in retrieved],
+                },            
             },
             gold_titles=gold_titles
         )
