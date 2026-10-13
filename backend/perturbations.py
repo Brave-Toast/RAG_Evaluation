@@ -15,7 +15,7 @@ Method: TypeAlias = Literal[
     "metadata_injection",
 ]
 METHOD_ORDER = (
-    "rephrase", "spelling", "emoji", "negation_flip", "entity_substitution", "conflict", "metadata_injection",
+    "rephrase", "spelling", "emoji", "negation_flip", "entity_substitution", "metadata_injection", "conflict",
     "remove_evidence", "alter_facts", "truncate", "irrelevant", "shuffle",
 )
 # metadata_injection targets the retrieval stage: it adds a candidate document
