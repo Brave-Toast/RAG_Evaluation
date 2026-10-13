@@ -1100,19 +1100,38 @@ def is_correct(answer,ground_truth):
     return calculate_token_f1(answer,ground_truth)>=0.5
 
 
-async def localise_failure(req,perturbed_query,baseline_contexts,retrieved,baseline_answer,perturbed_answer,context_edited,gold_titles):
+async def localise_failure(req,perturbed_query,baseline_contexts,retrieved,baseline_answer,perturbed_answer,context_edited,gold_titles,baseline_pool=None,pert_pool=None):
     #swap tset - put the clen stuff bak one stgae at a tiem n see wich swap fixs the anwser
+    #stages it can blame: QUERY, RETRIEVAL, RERANKING (only wen reranker is on), CONTEXT, GENERATION
     gt=req.ground_truth
-    if not is_correct(baseline_answer,gt):
-        #clen run faild to, chek if teh clen retreival got all the gold docs (the ones wit the anwser)
+
+    def has_answer(docs):
+        #chek if these docs contain the gold docs (the ones wit the anwser)
         if gold_titles:
-            got=[c.title for c in baseline_contexts]
-            had_answer=all(t in got for t in gold_titles)
-        else:
-            #custom qustions dont hav gold docs so fal bak to chekin if anwser txt is in teh docs
-            had_answer=gt.lower() in " ".join(c.text for c in baseline_contexts).lower()
-        if had_answer:
+            got=[c.title for c in docs]
+            return all(t in got for t in gold_titles)
+        #custom qustions dont hav gold docs so fal bak to chekin if anwser txt is in teh docs
+        return gt.lower() in " ".join(c.text for c in docs).lower()
+
+    async def retrieval_or_reranking(reason,swap_answer):
+        #docs were the problem, figure out if the retriver or the reranker picked the wrong ones
+        #if reranker was on, try wat the retriver alone wud of sent (top_k of the pool b4 rerank)
+        if pert_pool:
+            swap3,warn3=await generate_llm_answer(query=perturbed_query,contexts=_copy_contexts(pert_pool[:req.top_k]),
+                        model_choice=req.llm_model,ground_truth=gt,gemini_api_key=req.gemini_api_key,is_perturbed=True)
+            if warn3:
+                return {"failed_at":"UNKNOWN","reason":"model didnt answer during swap test"}
+            if is_correct(swap3,gt):
+                return {"failed_at":"RERANKING","reason":"the retrievers own picks wud of worked, the reranker swapped in the wrong docs","swap_answer":swap3}
+        return {"failed_at":"RETRIEVAL","reason":reason,"swap_answer":swap_answer}
+
+    if not is_correct(baseline_answer,gt):
+        #clen run faild to
+        if has_answer(baseline_contexts):
             return {"failed_at":"GENERATION","reason":"model had the right docs and clean question but still got it wrong"}
+        #reranker on n the retrivers own top_k had the answer docs but the reranker didnt keep them
+        if baseline_pool and has_answer(baseline_pool[:req.top_k]):
+            return {"failed_at":"RERANKING","reason":"clean run, the retrievers own picks had the answer docs but the reranker dropped them"}
         return {"failed_at":"RETRIEVAL","reason":"even the clean run didnt retrieve the answer docs, retriever missed it"}
     if is_correct(perturbed_answer,gt):
         return {"failed_at":"NONE","reason":"perturbed answer is still correct"}
@@ -1125,9 +1144,9 @@ async def localise_failure(req,perturbed_query,baseline_contexts,retrieved,basel
     if not is_correct(swap1,gt):
         return {"failed_at":"QUERY","reason":"even with clean docs the broken question still gets it wrong","swap_answer":swap1}
 
-    #clen docs fixd it so docs wre the problme, now chek if its retreival or teh contxt edits
+    #clen docs fixd it so docs wre the problme, now chek if its retreival/reranking or teh contxt edits
     if not context_edited:
-        return {"failed_at":"RETRIEVAL","reason":"clean docs fixed it, retriever picked the wrong docs","swap_answer":swap1}
+        return await retrieval_or_reranking("clean docs fixed it, retriever picked the wrong docs",swap1)
 
     #swap 2 giv it the docs as retreived, befor shufle/trunacte etc mesed wit them
     swap2,warn2=await generate_llm_answer(query=perturbed_query,contexts=_copy_contexts(retrieved),
@@ -1136,8 +1155,7 @@ async def localise_failure(req,perturbed_query,baseline_contexts,retrieved,basel
         return {"failed_at":"UNKNOWN","reason":"model didnt answer during swap test"}
     if is_correct(swap2,gt):
         return {"failed_at":"CONTEXT","reason":"retrieved docs were fine, the context edits broke it","swap_answer":swap2}
-    return {"failed_at":"RETRIEVAL","reason":"retriever picked the wrong docs","swap_answer":swap2}
-
+    return await retrieval_or_reranking("retriever picked the wrong docs",swap2)
 async def evaluation_events(req: EvaluationRequest):
     """One baseline per request; each variant starts with independent inputs."""
     
@@ -1293,7 +1311,7 @@ async def evaluation_events(req: EvaluationRequest):
         if answer_warning or baseline_warning:
             localisation={"failed_at":"UNKNOWN","reason":"model didnt answer so cant localise"}
         else:
-            localisation=await localise_failure(req,query,baseline_contexts,retrieved,baseline_answer,answer,context_edited,gold_titles)
+            localisation=await localise_failure(req,query,baseline_contexts,retrieved,baseline_answer,answer,context_edited,gold_titles,baseline_pool,pert_pool)
         print(f"failure localisation: {localisation}")
         variant = VariantResult(
             variant_id=f"{evaluation_id}:{index}", methods=selected, application_order=selected,
