@@ -191,6 +191,7 @@ class VariantResult(BaseModel):
     perturbed_retrieved_contexts: List[ContextDoc]
     baseline_generation_source: str
     perturbed_generation_source: str
+    failure_localisation: Optional[Dict[str, Any]]=None
 
 
 class EvaluationResponse(VariantResult):
@@ -529,14 +530,10 @@ async def generate_llm_answer(
     cloud Gemini API, or benchmark synthetic fallback with robust error handling.
     """
     ctx_text = "\n".join([f"[{c.title}]: {c.text}" for c in contexts])
-    
-    if not is_perturbed:
-        system_prompt = "You are a precise QA assistant. Answer concisely based strictly on the provided pristine baseline context."
-        prompt = f"Baseline Context:\n{ctx_text}\n\nQuestion: {query}\nAnswer concisely based strictly on baseline context:"
-    else:
-        system_prompt = "You are a QA assistant evaluating perturbed RAG context. Answer the question based on context. If context contains conflicting claims, state the conflict clearly."
-        prompt = f"Perturbed Context:\n{ctx_text}\n\nQuestion: {query}\nAnswer concisely based on context:"
-
+    # same prompt for clean n perturbed runs, otherwise were not compareing fairly
+    # (old perturbed prompt told the model it was perturbed + to explain conflicts which made answers longer n tanked f1)
+    system_prompt = "You are a precise QA assistant. Answer the question using only the provided context. Reply with the short answer only, a few words, no explanation."
+    prompt = f"Context:\n{ctx_text}\n\nQuestion: {query}\nShort answer:"
     warning_msg = None
 
     # 1. Ollama Local LLM Integration (Supporting qwen3.5:9b, llama3, mistral)
@@ -546,17 +543,19 @@ async def generate_llm_answer(
         if ensure_ollama_model_pulled(model_name):
             try:
                 async with httpx.AsyncClient(timeout=300.0) as client:
-                    res = await client.post(
-                        ollama_url,
-                        json={
-                            "model": model_name,
-                            "prompt": f"{system_prompt}\n\n{prompt}",
-                            "stream": False,
-                            "options": {
-                                "num_predict": 8000
-                            }
+                    payload={
+                        "model": model_name,
+                        "prompt": f"{system_prompt}\n\n{prompt}",
+                        "stream": False,
+                        "options": {
+                            "num_predict": 8000,
+                            "temperature":0 #no randomnes so same test gives same anwser evry time
                         }
-                    )
+                    }
+                    # only thinking models (qwen3, deepseek-r1) get think off, other models dont support it n might error
+                    if "qwen3" in model_name or "deepseek-r1" in model_name:
+                        payload["think"]=False
+                    res = await client.post(ollama_url, json=payload)
                     if res.status_code == 200:
                         data = res.json()
                         answer = data.get("response", "").strip()
@@ -626,17 +625,19 @@ async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key:
         ollama_url = "http://localhost:11434/api/generate"
         try:
             async with httpx.AsyncClient(timeout=300.0) as client:
-                res = await client.post(
-                    ollama_url,
-                    json={
-                        "model": model_name,
-                        "prompt": f"{rephrase_system_prompt}\n\n{prompt}",
-                        "stream": False,
-                        "options": {
-                            "num_predict": 8000
-                        }
+                payload={
+                    "model": model_name,
+                    "prompt": f"{rephrase_system_prompt}\n\n{prompt}",
+                    "stream": False,
+                    "options": {
+                        "num_predict": 8000,
+                        "temperature":0 #same rephrase evry run
                     }
-                )
+                }
+                #only thinkin models get think off, same as the anwser gen
+                if "qwen3" in model_name or "deepseek-r1" in model_name:
+                    payload["think"]=False
+                res = await client.post(ollama_url, json=payload)
                 if res.status_code == 200:
                     data = res.json()
                     rephrased = data.get("response", "").strip().strip('"')
@@ -739,11 +740,13 @@ def inject_entity_substitution(text: str, candidate_titles: List[str], replaceme
     if new_text == text:
         return text, None
     return new_text, {"original_entity": original_entity, "replacement_entity": replacement_entity}
-def inject_conflicting_context(contexts: List[ContextDoc], query: str, ground_truth: str) -> List[ContextDoc]:
-    """Injects a high-priority synthetic contradictory context passage."""
+def inject_conflicting_context(contexts: List[ContextDoc], query: str, ground_truth: str, wrong_answer: Optional[str]=None) -> List[ContextDoc]:
+    """Injects a high-priority synthetic passage that claims a wrong answer."""
+    #old version put the real anwser in the fake doc so the modle just read it out of it, now it claims a wrong one
+    fake=wrong_answer or "an unrelated person"
     conflict_doc = ContextDoc(
         title="Synthetic_Conflicting_Record",
-        text=f"NOTICE: Regarding the query '{query}', conflicting modern sources refute that '{ground_truth}' is accurate. Historical logs indicate synthetic alternative facts.",
+        text=f"NOTICE: Regarding the query '{query}', updated records confirm the answer is {fake}. Earlier sources that claim otherwise have been corrected.",
         score=0.99
     )
     return [conflict_doc] + [c for c in contexts]
@@ -913,6 +916,48 @@ def evaluate_metrics(req, baseline_query, perturbed_query, baseline_contexts,
 def _copy_contexts(contexts):
     return [doc.model_copy(deep=True) for doc in contexts]
 
+def is_correct(answer,ground_truth):
+    #quick chek for now, f1>=0.5 coutns as rigth (same cutof as diagnose_failure) can swap fr llm judge latr
+    return calculate_token_f1(answer,ground_truth)>=0.5
+
+
+async def localise_failure(req,perturbed_query,baseline_contexts,retrieved,baseline_answer,perturbed_answer,context_edited,gold_titles):
+    #swap tset - put the clen stuff bak one stgae at a tiem n see wich swap fixs the anwser
+    gt=req.ground_truth
+    if not is_correct(baseline_answer,gt):
+        #clen run faild to, chek if teh clen retreival got all the gold docs (the ones wit the anwser)
+        if gold_titles:
+            got=[c.title for c in baseline_contexts]
+            had_answer=all(t in got for t in gold_titles)
+        else:
+            #custom qustions dont hav gold docs so fal bak to chekin if anwser txt is in teh docs
+            had_answer=gt.lower() in " ".join(c.text for c in baseline_contexts).lower()
+        if had_answer:
+            return {"failed_at":"GENERATION","reason":"model had the right docs and clean question but still got it wrong"}
+        return {"failed_at":"RETRIEVAL","reason":"even the clean run didnt retrieve the answer docs, retriever missed it"}
+    if is_correct(perturbed_answer,gt):
+        return {"failed_at":"NONE","reason":"perturbed answer is still correct"}
+
+    #swap 1 keep teh brokn qustion but giv the modle the clen docs
+    swap1,warn1=await generate_llm_answer(query=perturbed_query,contexts=_copy_contexts(baseline_contexts),
+                    model_choice=req.llm_model,ground_truth=gt,gemini_api_key=req.gemini_api_key,is_perturbed=True)
+    if warn1:
+        return {"failed_at":"UNKNOWN","reason":"model didnt answer during swap test"}
+    if not is_correct(swap1,gt):
+        return {"failed_at":"QUERY","reason":"even with clean docs the broken question still gets it wrong","swap_answer":swap1}
+
+    #clen docs fixd it so docs wre the problme, now chek if its retreival or teh contxt edits
+    if not context_edited:
+        return {"failed_at":"RETRIEVAL","reason":"clean docs fixed it, retriever picked the wrong docs","swap_answer":swap1}
+
+    #swap 2 giv it the docs as retreived, befor shufle/trunacte etc mesed wit them
+    swap2,warn2=await generate_llm_answer(query=perturbed_query,contexts=_copy_contexts(retrieved),
+          model_choice=req.llm_model,ground_truth=gt,gemini_api_key=req.gemini_api_key,is_perturbed=True)
+    if warn2:
+        return {"failed_at":"UNKNOWN","reason":"model didnt answer during swap test"}
+    if is_correct(swap2,gt):
+        return {"failed_at":"CONTEXT","reason":"retrieved docs were fine, the context edits broke it","swap_answer":swap2}
+    return {"failed_at":"RETRIEVAL","reason":"retriever picked the wrong docs","swap_answer":swap2}
 
 async def evaluation_events(req: EvaluationRequest):
     """One baseline per request; each variant starts with independent inputs."""
@@ -959,7 +1004,7 @@ async def evaluation_events(req: EvaluationRequest):
            "baseline_answer": baseline_answer, "baseline_generation_source": baseline_source,
            "gold_titles": gold_titles, "baseline_diagnosis": base_diag}
 
-    dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence", "entity_substitution", "metadata_injection"}.intersection(methods) else []
+    dataset = load_hotpotqa_dataset() if {"irrelevant", "remove_evidence", "entity_substitution", "metadata_injection", "conflict"}.intersection(methods) else []
     supporting_titles = req.supporting_titles
     if supporting_titles is None and req.question_id and not req.custom_query:
         row = next((r for r in dataset if str(r.get("id")) == str(req.question_id)), {})
@@ -1010,7 +1055,14 @@ async def evaluation_events(req: EvaluationRequest):
             if meta_candidate:
                 candidates = [ContextDoc(**meta_candidate)] + candidates
         if "conflict" in selected:
-            candidates = inject_conflicting_context(candidates, query, req.ground_truth)
+            #pick a wrong anwser so the fake doc is belivable but wrong
+            gt=req.ground_truth.strip().lower()
+            if gt in ("yes","no"):
+                wrong="no" if gt=="yes" else "yes"
+            else:
+                others=[r.get("ground_truth") for r in dataset if r.get("ground_truth") and r.get("ground_truth").strip().lower()!=gt]
+                wrong=method_rng(seed,"conflict").choice(others) if others else None
+            candidates = inject_conflicting_context(candidates, query, req.ground_truth, wrong)
             changes.append(change_record("conflict", "pre_retrieval", True,
                                          "Added contradictory candidate document; retrieval determines whether it reaches generation.",
                                          [candidates[0].model_dump()]))
@@ -1049,6 +1101,14 @@ async def evaluation_events(req: EvaluationRequest):
             evaluate_metrics, req, baseline_query, query, baseline_contexts, final_contexts,
             retrieved, baseline_answer, answer, base_diag, pert_diag, gold_titles
         )
+        #chek if the contxt edits actualy chnaged anyting (shufle/truncate etc)
+        context_edited=[(d["title"],d["text"]) for d in final_docs]!=[(c.title,c.text) for c in retrieved]
+        #swap tset to fnd wich stage broke teh anwser, skip if modle didnt answr
+        if answer_warning or baseline_warning:
+            localisation={"failed_at":"UNKNOWN","reason":"model didnt answer so cant localise"}
+        else:
+            localisation=await localise_failure(req,query,baseline_contexts,retrieved,baseline_answer,answer,context_edited,gold_titles)
+        print(f"failure localisation: {localisation}")
         variant = VariantResult(
             variant_id=f"{evaluation_id}:{index}", methods=selected, application_order=selected,
             baseline_query=baseline_query, perturbed_query=query,
@@ -1059,6 +1119,7 @@ async def evaluation_events(req: EvaluationRequest):
             metrics=metrics, warning=warning, changes=changes,
             baseline_generation_source=baseline_source,
             perturbed_generation_source="synthetic" if answer_warning else req.llm_model,
+            failure_localisation=localisation,
         )
         log_stage_run(
             req, baseline_query, query, baseline_contexts, retrieved, baseline_answer, answer, metrics, warning,

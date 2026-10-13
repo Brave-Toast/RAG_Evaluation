@@ -309,7 +309,8 @@ function renderVariant(result) {
         context_recall_perturbed: metrics.context_recall_perturbed,
         answer_f1_perturbed: metrics.answer_f1_perturbed,
         failure_attribution: metrics.failure_attribution,
-        failure_root_cause: metrics.failure_root_cause
+        failure_root_cause: metrics.failure_root_cause,
+        failure_localisation: result.failure_localisation
     });
 
 }
@@ -397,8 +398,8 @@ export async function executeEvaluation() {
                 amplificationFactor: variant.metrics.amplification_factor,
                 statusCategory: variant.metrics.status_category,
                 status: variant.metrics.status_text,
-                failureAttribution: variant.metrics.failure_attribution,
-                failureRootCause: variant.metrics.failure_root_cause,
+                failureAttribution: variant.failure_localisation?.failed_at||variant.metrics.failure_attribution,
+                failureRootCause: variant.failure_localisation?.reason||variant.metrics.failure_root_cause,
                 contextRecall: variant.metrics.context_recall_perturbed,
                 answerF1: variant.metrics.answer_f1_perturbed,
                 evaluationId: result.evaluation_id,
