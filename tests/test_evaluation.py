@@ -23,6 +23,52 @@ with patch.dict(sys.modules, {
 from backend.perturbations import METHOD_ORDER
 
 
+class EnsembleRetrievalTests(unittest.TestCase):
+    def setUp(self):
+        self.docs = [
+            backend.ContextDoc(title="First", text="first text"),
+            backend.ContextDoc(title="Second", text="second text"),
+        ]
+
+    def test_ensemble_fuses_component_scores_and_bypasses_chroma(self):
+        vectors = {
+            ("query", "sentence-transformers/all-mpnet-base-v2"): np.array([1.0, 0.0]),
+            ("First first text", "sentence-transformers/all-mpnet-base-v2"): np.array([1.0, 0.0]),
+            ("Second second text", "sentence-transformers/all-mpnet-base-v2"): np.array([0.0, 1.0]),
+            ("query", "ollama/nomic-embed-text"): np.array([1.0, 0.0, 0.0]),
+            ("First first text", "ollama/nomic-embed-text"): np.array([0.0, 1.0, 0.0]),
+            ("Second second text", "ollama/nomic-embed-text"): np.array([1.0, 0.0, 0.0]),
+        }
+        with patch.object(backend, "compute_dense_embedding", side_effect=lambda text, provider: vectors[(text, provider)]), \
+             patch.object(backend.Chroma, "from_documents") as chroma_from_documents:
+            result = backend.perform_vector_retrieval(
+                self.docs, "query", "similarity", 2, backend.ENSEMBLE_EMBEDDING_PROVIDER
+            )
+
+        chroma_from_documents.assert_not_called()
+        self.assertEqual([doc.title for doc in result], ["First", "Second"])
+        self.assertEqual([doc.score for doc in result], [0.5, 0.5])
+
+    def test_ensemble_cosine_similarity_averages_model_scores(self):
+        with patch.object(
+            backend,
+            "compute_dense_cosine_similarity",
+            wraps=backend.compute_dense_cosine_similarity,
+        ) as cosine, patch.object(
+            backend,
+            "compute_dense_embedding",
+            side_effect=[np.array([1.0, 0.0]), np.array([1.0, 0.0]),
+                         np.array([1.0, 0.0]), np.array([0.0, 1.0])],
+        ):
+            score = cosine("one", "two", backend.ENSEMBLE_EMBEDDING_PROVIDER)
+
+        self.assertEqual(score, 0.5)
+        self.assertEqual(
+            [call.args[2] for call in cosine.call_args_list[1:]],
+            list(backend.ENSEMBLE_COMPONENT_PROVIDERS),
+        )
+
+
 class EvaluationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
