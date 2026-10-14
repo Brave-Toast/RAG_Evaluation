@@ -19,6 +19,11 @@ import httpx
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
+from backend.llm_judge import (
+    DEFAULT_JUDGE_MODEL,
+    SUPPORTED_JUDGES,
+    evaluate_with_llm_judge,
+)
 
 if __package__:
     from .perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
@@ -167,6 +172,17 @@ class EvaluationRequest(BaseModel):
         if v not in SUPPORTED_RERANKERS:
             raise ValueError(f"unknown reranker '{v}', pick one of {list(SUPPORTED_RERANKERS)}")
         return v
+    use_llm_judge: bool = False
+    judge_model: str = DEFAULT_JUDGE_MODEL
+
+    @model_validator(mode="after")
+    def validate_judge_model(self):
+        if self.use_llm_judge and self.judge_model not in SUPPORTED_JUDGES:
+            raise ValueError(
+                f"Unsupported judge_model '{self.judge_model}'. "
+                f"Supported: {list(SUPPORTED_JUDGES)}"
+            )
+        return self
 
 
 class IngestRequest(BaseModel):
@@ -977,6 +993,18 @@ def list_rerankers():
         "default": DEFAULT_RERANKER,
         "rerankers": [{"name": name, "label": label} for name, label in SUPPORTED_RERANKERS.items()],
     }
+@app.get("/api/judges")
+async def list_judges():
+    return {
+        "default": DEFAULT_JUDGE_MODEL,
+        "judges": [
+            {"name": "ollama/qwen3.5:9b", "label": "Ollama / qwen3.5:9b (Local Judge)"},
+            {"name": "ollama/llama3", "label": "Ollama / llama3 (Local Judge)"},
+            {"name": "ollama/mistral", "label": "Ollama / mistral (Local Judge)"},
+            {"name": "gemini-3-flash-preview", "label": "Gemini 3 Flash (Cloud Judge)"},
+            {"name": "synthetic-evaluator", "label": "Synthetic Heuristic Judge (Fast Offline)"},
+        ],
+    }
 
 @app.get("/api/dataset")
 def get_dataset():
@@ -1387,6 +1415,12 @@ async def stream_evaluation(req: EvaluationRequest):
             yield json.dumps({"event": "error", "message": "Evaluation failed. Check the backend terminal for details."}) + "\n"
     return StreamingResponse(stream(), media_type="application/x-ndjson", headers={"Cache-Control": "no-cache"})
 
+try:
+    from backend.llm_judge import register_llm_judge
+except ImportError:
+    from llm_judge import register_llm_judge
+
+register_llm_judge(app)
 
 if __name__ == "__main__":
     import uvicorn
