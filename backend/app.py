@@ -13,19 +13,18 @@ import asyncio
 from typing import List, Optional, Dict, Any, Literal
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 import numpy as np
 import httpx
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
-from backend.llm_judge import (
-    DEFAULT_JUDGE_MODEL,
-    SUPPORTED_JUDGES,
-    evaluate_with_llm_judge,
-)
-
 if __package__:
+    from .llm_judge import (
+        DEFAULT_JUDGE_MODEL,
+        SUPPORTED_JUDGES,
+        evaluate_with_llm_judge,
+    )
     from .perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
                                 method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis,
                                 build_metadata_boosted_candidate)
@@ -34,6 +33,18 @@ if __package__:
                                     diagnose_failure)
     from .repairs import apply_repair_methods, REPAIR_REGISTRY
 else:
+    try:
+        from backend.llm_judge import (
+            DEFAULT_JUDGE_MODEL,
+            SUPPORTED_JUDGES,
+            evaluate_with_llm_judge,
+        )
+    except ImportError:
+        from llm_judge import (
+            DEFAULT_JUDGE_MODEL,
+            SUPPORTED_JUDGES,
+            evaluate_with_llm_judge,
+        )
     from perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis,
                                build_metadata_boosted_candidate)
@@ -1418,7 +1429,10 @@ async def stream_evaluation(req: EvaluationRequest):
 try:
     from backend.llm_judge import register_llm_judge
 except ImportError:
-    from llm_judge import register_llm_judge
+    try:
+        from .llm_judge import register_llm_judge
+    except ImportError:
+        from llm_judge import register_llm_judge
 
 register_llm_judge(app)
 

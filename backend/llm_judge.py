@@ -19,7 +19,10 @@ import httpx
 try:
     from backend.isolation_metrics import calculate_token_f1, diagnose_failure, normalize_text
 except ImportError:
-    from isolation_metrics import calculate_token_f1, diagnose_failure, normalize_text
+    try:
+        from .isolation_metrics import calculate_token_f1, diagnose_failure, normalize_text
+    except ImportError:
+        from isolation_metrics import calculate_token_f1, diagnose_failure, normalize_text
 
 SUPPORTED_JUDGES = (
     "ollama/qwen3.5:9b",
@@ -596,7 +599,7 @@ def register_llm_judge(app: FastAPI) -> None:
         async def receive():
             return {"type": "http.request", "body": forwarded_bytes, "more_body": False}
 
-         forwarded_req = Request(request.scope, receive)
+        forwarded_req = Request(request.scope, receive)
         response = await call_next(forwarded_req)
 
         if response.status_code != 200:
