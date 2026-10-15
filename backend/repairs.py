@@ -5,7 +5,7 @@ jsut looks up whichver ones were askd for and runs them one after antoher
 """
 
 import re
-from typing import List, Dict, Callable
+from typing import Dict, Callable
 
 #A dictionary that holds the label for repair and thjen would call the function to fix a query issue
 REPAIR_REGISTRY: Dict[str, Callable] = {}
@@ -20,7 +20,7 @@ def register_repair(name):
     return wrapper
 
 
-def apply_repair_methods(query, contexts, methods):
+def apply_repair_methods(query, contexts, methods, config=None):
     #checking diffrent fixes ive selected to run on the query, one by one
     #for each one we look up the function using its key, and to actually run it we need the ()
     #if no function exists for that key we jsut say no such repair and move to next one
@@ -32,13 +32,13 @@ def apply_repair_methods(query, contexts, methods):
         if fn is None:
             changes.append({"method": method, "status": "skipped", "summary": f"no repair registerd for '{method}'"})
             continue
-        query, contexts, record = fn(query, contexts)
+        query, contexts, record = fn(query, contexts, config)
         changes.append(record)
     return query, contexts, changes
 
 #@register_repair("noop") calls register_repair fisrt with the name, then feeds repair_noop into wrapper to save it in the dict
 @register_repair("noop")
-def repair_noop(query, contexts):
+def repair_noop(query, contexts, config=None):
     return query, contexts, {"method": "noop", "status": "applied", "summary": "no changes made (test repair)"}
 
 
@@ -84,7 +84,7 @@ def _looks_injected(doc: dict) -> bool:
 
 
 @register_repair("contradiction_filter")
-def repair_contradiction_filter(query, contexts):
+def repair_contradiction_filter(query, contexts, config=None):
     """
     Scans the supplied contexts for documents that look like fabricated
     conflicting-context or metadata-injection perturbations, and removes
@@ -118,8 +118,111 @@ def repair_contradiction_filter(query, contexts):
     return query, kept, record
 
 
+
+@register_repair("fix_shuffle")
+def repair_fix_shuffle(query, contexts, config=None):
+    """Restore shuffled passages to descending stored retrieval-score order."""
+    original_order = [doc.get("title", "untitled") for doc in contexts]
+    # Missing scores cannot establish relevance, so they remain after scored
+    # passages and retain their relative input order via Python's stable sort.
+    ranked = sorted(
+        enumerate(contexts),
+        key=lambda item: (
+            item[1].get("score") is not None,
+            item[1].get("score") or 0.0,
+        ),
+        reverse=True,
+    )
+    repaired = [doc for _, doc in ranked]
+    repaired_order = [doc.get("title", "untitled") for doc in repaired]
+    changed = [index for index, _ in ranked] != list(range(len(contexts)))
+    details = {
+        "context_count": len(contexts),
+        "original_order": original_order,
+        "repaired_order": repaired_order,
+        "relevance_scores": [
+            {
+                "original_index": original_index,
+                "repaired_index": repaired_index,
+                "title": doc.get("title", "untitled"),
+                "score": doc.get("score"),
+            }
+            for repaired_index, (original_index, doc) in enumerate(ranked)
+        ],
+    }
+    if len(contexts) < 2:
+        summary = f"No reranking needed: received {len(contexts)} context(s)."
+    elif changed:
+        summary = f"Restored {len(contexts)} passages to descending retrieval-score order."
+    else:
+        summary = "Passages were already in descending retrieval-score order."
+    return query, repaired, {
+        "method": "fix_shuffle",
+        "status": "applied" if changed else "skipped",
+        "summary": summary,
+        "details": details,
+    }
+
+
+def _find_full_text(doc, full_contexts):
+    """Return one unambiguous same-title full text that extends the supplied prefix."""
+    title = doc.get("title")
+    truncated_text = doc.get("text") or ""
+    matches = [
+        candidate.get("text") or ""
+        for candidate in full_contexts
+        if candidate.get("title") == title
+        and len(candidate.get("text") or "") > len(truncated_text)
+        and (candidate.get("text") or "").startswith(truncated_text)
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+@register_repair("fix_truncate")
+def repair_fix_truncate(query, contexts, config=None):
+    """Detect truncated passage prefixes and restore exact post-retrieval full text."""
+    full_contexts = (config or {}).get("full_contexts") or []
+    repaired = []
+    restored = []
+    unresolved = []
+
+    for index, doc in enumerate(contexts):
+        full_text = _find_full_text(doc, full_contexts)
+        if full_text is None:
+            repaired.append(doc)
+            if doc.get("text") and not re.search(r"[.!?][\"')\]]?\s*$", doc["text"]):
+                unresolved.append({"index": index, "title": doc.get("title", "untitled")})
+            continue
+        restored_doc = dict(doc)
+        restored_doc["text"] = full_text
+        repaired.append(restored_doc)
+        restored.append({
+            "index": index,
+            "title": doc.get("title", "untitled"),
+            "truncated_characters": len(doc.get("text") or ""),
+            "restored_characters": len(full_text),
+        })
+
+    changed = bool(restored)
+    if changed:
+        summary = f"Restored exact full text for {len(restored)} truncated passage(s)."
+    elif unresolved:
+        summary = "Detected possible cut-off passage(s), but no unambiguous full-text source matched; nothing was fabricated."
+    else:
+        summary = "No truncated passage with a matching full-text source was found."
+    return query, repaired, {
+        "method": "fix_truncate",
+        "status": "applied" if changed else "skipped",
+        "summary": summary,
+        "details": {
+            "context_count": len(contexts),
+            "restored": restored,
+            "unresolved_cutoffs": unresolved,
+        },
+    }
+
 @register_repair("contradiction_filter_text_only")
-def repair_contradiction_filter_text_only(query, contexts):
+def repair_contradiction_filter_text_only(query, contexts, config=None):
     """Same as contradiction_filter but ignores the title, so it checks text only."""
     kept, removed = [], []
     for doc in contexts:
@@ -137,9 +240,6 @@ def repair_contradiction_filter_text_only(query, contexts):
 
 
 # --- Altered-Facts Repair Methods (RS-62) ---
-#
-# PASTE THIS BLOCK AT THE VERY END OF backend/repairs.py (it only needs `re`, which is
-# already imported at the top of that file).
 #
 # The "alter_facts" perturbation (perturbations.py) changes numbers and dates inside the
 # retrieved passages. These repairs cross-check numbers ACROSS the retrieved passages:
@@ -338,12 +438,13 @@ def _fix_alter_facts(query, contexts, method_name, drop):
 
 
 @register_repair("fix_alter_facts")
-def repair_fix_alter_facts(query, contexts):
+def repair_fix_alter_facts(query, contexts, config=None):
     """Cross-checks numbers across passages; corrects a figure the other passages contradict and flags the rest."""
     return _fix_alter_facts(query, contexts, "fix_alter_facts", drop=False)
 
 
 @register_repair("fix_alter_facts_drop")
-def repair_fix_alter_facts_drop(query, contexts):
+def repair_fix_alter_facts_drop(query, contexts, config=None):
     """Cross-checks numbers across passages; drops the passage whose figure is out-voted or has an impossible date."""
     return _fix_alter_facts(query, contexts, "fix_alter_facts_drop", drop=True)
+

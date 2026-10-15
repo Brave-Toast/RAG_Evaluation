@@ -20,7 +20,53 @@ with patch.dict(sys.modules, {
 }):
     backend = importlib.import_module("backend.app")
 
-from backend.perturbations import METHOD_ORDER
+from backend.perturbations import METHOD_ORDER, PRE_RETRIEVAL
+
+
+class EnsembleRetrievalTests(unittest.TestCase):
+    def setUp(self):
+        self.docs = [
+            backend.ContextDoc(title="First", text="first text"),
+            backend.ContextDoc(title="Second", text="second text"),
+        ]
+
+    def test_ensemble_fuses_component_scores_and_bypasses_chroma(self):
+        vectors = {
+            ("query", "sentence-transformers/all-mpnet-base-v2"): np.array([1.0, 0.0]),
+            ("First first text", "sentence-transformers/all-mpnet-base-v2"): np.array([1.0, 0.0]),
+            ("Second second text", "sentence-transformers/all-mpnet-base-v2"): np.array([0.0, 1.0]),
+            ("query", "ollama/nomic-embed-text"): np.array([1.0, 0.0, 0.0]),
+            ("First first text", "ollama/nomic-embed-text"): np.array([0.0, 1.0, 0.0]),
+            ("Second second text", "ollama/nomic-embed-text"): np.array([1.0, 0.0, 0.0]),
+        }
+        with patch.object(backend, "compute_dense_embedding", side_effect=lambda text, provider: vectors[(text, provider)]), \
+             patch.object(backend.Chroma, "from_documents") as chroma_from_documents:
+            result = backend.perform_vector_retrieval(
+                self.docs, "query", "similarity", 2, backend.ENSEMBLE_EMBEDDING_PROVIDER
+            )
+
+        chroma_from_documents.assert_not_called()
+        self.assertEqual([doc.title for doc in result], ["First", "Second"])
+        self.assertEqual([doc.score for doc in result], [0.5, 0.5])
+
+    def test_ensemble_cosine_similarity_averages_model_scores(self):
+        with patch.object(
+            backend,
+            "compute_dense_cosine_similarity",
+            wraps=backend.compute_dense_cosine_similarity,
+        ) as cosine, patch.object(
+            backend,
+            "compute_dense_embedding",
+            side_effect=[np.array([1.0, 0.0]), np.array([1.0, 0.0]),
+                         np.array([1.0, 0.0]), np.array([0.0, 1.0])],
+        ):
+            score = cosine("one", "two", backend.ENSEMBLE_EMBEDDING_PROVIDER)
+
+        self.assertEqual(score, 0.5)
+        self.assertEqual(
+            [call.args[2] for call in cosine.call_args_list[1:]],
+            list(backend.ENSEMBLE_COMPONENT_PROVIDERS),
+        )
 
 
 class EvaluationTests(unittest.TestCase):
@@ -70,10 +116,10 @@ class EvaluationTests(unittest.TestCase):
         original = copy.deepcopy(self.payload)
         with patch.object(backend, "generate_llm_answer", wraps=backend.generate_llm_answer) as generate:
             result = self.run_request(perturbation_types=list(METHOD_ORDER), mode="separate")
-        self.assertEqual(generate.call_count, 10)
+        self.assertEqual(generate.call_count, 1 + len(METHOD_ORDER))
         self.assertEqual(sum(not call.kwargs["is_perturbed"] for call in generate.call_args_list), 1)
-        self.assertEqual(self.retriever.call_count, 5)  # baseline + four pre-retrieval variants
-        self.assertEqual(len(result["variants"]), 9)
+        self.assertEqual(self.retriever.call_count, 1 + len(PRE_RETRIEVAL))  # baseline + each pre-retrieval variant
+        self.assertEqual(len(result["variants"]), len(METHOD_ORDER))
         variants = {v["methods"][0]: v for v in result["variants"]}
         baseline = result["baseline_contexts"]
         for method in ["remove_evidence", "alter_facts", "truncate", "irrelevant", "shuffle"]:
@@ -84,7 +130,7 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(self.payload, original)
         logs = [json.loads(line) for line in self.log.read_text(encoding='utf-8').splitlines()]
         self.assertEqual(len({r["evaluation_id"] for r in logs}), 1)
-        self.assertEqual(len({r["variant_id"] for r in logs}), 9)
+        self.assertEqual(len({r["variant_id"] for r in logs}), len(METHOD_ORDER))
         self.assertIn("context_stage", logs[0])
         self.assertNotIn("gemini_api_key", logs[0])
 

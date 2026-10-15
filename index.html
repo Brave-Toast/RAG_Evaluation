@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +14,9 @@
     <!-- Custom Extracted Stylesheet -->
     <link rel="stylesheet" href="css/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -30,28 +33,37 @@
         }
     </script>
 </head>
+
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
 
     <!-- Top Header Bar -->
-    <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md px-6 py-3 flex items-center justify-between">
+    <header
+        class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md px-6 py-3 flex items-center justify-between">
         <div class="flex items-center space-x-3">
-            <div class="bg-gradient-to-tr from-indigo-600 to-violet-500 text-white p-2 rounded-lg shadow-lg shadow-indigo-500/20">
+            <div
+                class="bg-gradient-to-tr from-indigo-600 to-violet-500 text-white p-2 rounded-lg shadow-lg shadow-indigo-500/20">
                 <i class="fa-solid fa-network-wired text-xl"></i>
             </div>
             <div>
                 <h1 class="font-bold text-lg text-white leading-tight flex items-center gap-2">
                     RAG Evaluation & Perturbation Dashboard
-                    <span class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">v3.0 Modular ES6</span>
+                    <span
+                        class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">v3.0
+                        Modular ES6</span>
                 </h1>
-                <p class="text-xs text-slate-400">Error Propagation Analysis across LangChain, ChromaDB & Local/Cloud LLMs</p>
+                <p class="text-xs text-slate-400">Error Propagation Analysis across LangChain, ChromaDB & Local/Cloud
+                    LLMs</p>
             </div>
         </div>
+
         <div class="flex items-center space-x-4">
-            <div id="status-badge" class="flex items-center space-x-2 text-xs bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full">
+            <div id="status-badge"
+                class="flex items-center space-x-2 text-xs bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span class="text-slate-300 font-medium">ChromaDB & Pipeline Active</span>
             </div>
-            <button id="reset-history-btn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+            <button id="reset-history-btn"
+                class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
                 <i class="fa-solid fa-rotate-left"></i> Reset Benchmark
             </button>
         </div>
@@ -61,19 +73,22 @@
     <div class="flex-1 flex overflow-hidden">
 
         <!-- Sidebar Control Panel -->
-        <aside class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col justify-between overflow-y-auto shrink-0 p-5 space-y-6">
+        <aside
+            class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col justify-between overflow-y-auto shrink-0 p-5 space-y-6">
             <div class="space-y-6">
-                
+
                 <!-- Dataset & Query Selector -->
                 <div>
                     <label class="block text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">
                         <i class="fa-solid fa-database mr-1"></i> 1. Select HotpotQA Query
                     </label>
-                    <select id="query-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <select id="query-select"
+                        class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                         <!-- Dynamic options loaded via JS -->
                     </select>
                     <div class="mt-2 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                        <span class="text-[10px] text-slate-500 font-semibold block uppercase">Ground Truth Answer</span>
+                        <span class="text-[10px] text-slate-500 font-semibold block uppercase">Ground Truth
+                            Answer</span>
                         <p id="ground-truth-preview" class="text-xs text-emerald-400 font-medium italic mt-0.5">---</p>
                     </div>
                 </div>
@@ -82,9 +97,11 @@
                 <div>
                     <div class="flex items-center justify-between mb-1">
                         <label class="text-xs font-medium text-slate-300">Or Custom Query:</label>
-                        <button id="clear-custom-query-btn" class="text-[10px] text-slate-400 hover:text-white">Clear</button>
+                        <button id="clear-custom-query-btn"
+                            class="text-[10px] text-slate-400 hover:text-white">Clear</button>
                     </div>
-                    <textarea id="custom-query-input" rows="2" placeholder="Type a custom query to evaluate..." class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                    <textarea id="custom-query-input" rows="2" placeholder="Type a custom query to evaluate..."
+                        class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
                 </div>
 
                 <hr class="border-slate-800">
@@ -92,7 +109,7 @@
                 <!-- Perturbation Module Settings -->
                 <div id="perturbation-controls" class="space-y-3">
                     <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-wider">2. Perturbations</h2>
-                    <p class="text-[11px] text-slate-300">Choose what to change. Click <strong>Add</strong> to pick an item, read what it does and set its options.</p>
+<p class="text-[11px] text-slate-300">Choose what to change. Click <strong>Add</strong> to pick an item, read what it does and set its options.</p>
                     <label class="block text-xs text-slate-300" for="evaluation-mode">Evaluation mode</label>
                     <select id="evaluation-mode" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
                         <option value="combined">Combined</option>
@@ -131,13 +148,17 @@
                     <label class="block text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">
                         <i class="fa-solid fa-cubes mr-1"></i> 3. Modular Components
                     </label>
-                    
+
                     <div class="space-y-3 text-xs">
                         <div>
                             <span class="text-slate-400 mb-1 block">Embedding Model</span>
-                            <select id="embedding-provider" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200">
-                                <option value="sentence-transformers/all-mpnet-base-v2" selected>SentenceTransformers / all-mpnet-base-v2</option>
-                                <option value="sentence-transformers/all-MiniLM-L6-v2">SentenceTransformers / all-MiniLM-L6-v2</option>
+                            <select id="embedding-provider"
+                                class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200">
+                                <option value="ensemble/mpnet+nomic">Ensemble / MPNet + Nomic</option>
+                                <option value="sentence-transformers/all-mpnet-base-v2" selected>SentenceTransformers /
+                                    all-mpnet-base-v2</option>
+                                <option value="sentence-transformers/all-MiniLM-L6-v2">SentenceTransformers /
+                                    all-MiniLM-L6-v2</option>
                                 <option value="ollama/nomic-embed-text">Ollama / nomic-embed-text (Local)</option>
                                 <option value="openai/text-embedding-3-small">OpenAI / text-embedding-3-small</option>
                             </select>
@@ -146,20 +167,39 @@
                         <div>
                             <span class="text-slate-400 mb-1 block">Vector Store & Strategy</span>
                             <div class="grid grid-cols-2 gap-2">
-                                <select id="search-type" class="bg-slate-800 border border-slate-700 rounded p-1.5 text-slate-200">
+                                <select id="search-type"
+                                    class="bg-slate-800 border border-slate-700 rounded p-1.5 text-slate-200">
                                     <option value="similarity">Similarity</option>
-                                    <option value="mmr">MMR (Re-rank)</option>
+                                    <option value="mmr">MMR (Diverse)</option>
                                 </select>
-                                <div class="flex items-center space-x-1 bg-slate-800 border border-slate-700 rounded px-2">
+                                <div
+                                    class="flex items-center space-x-1 bg-slate-800 border border-slate-700 rounded px-2">
                                     <span class="text-[10px] text-slate-400">Top K:</span>
-                                    <input type="number" id="top-k" value="2" min="1" max="5" class="w-full bg-transparent text-center font-bold text-white focus:outline-none">
+                                    <input type="number" id="top-k" value="2" min="1" max="5"
+                                        class="w-full bg-transparent text-center font-bold text-white focus:outline-none">
                                 </div>
                             </div>
                         </div>
 
                         <div>
+                            <span class="text-slate-400 mb-1 block">Reranking Stage</span>
+                            <label
+                                class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer mb-2">
+                                <input type="checkbox" id="use-reranker" class="accent-indigo-500">
+                                <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Use
+                                        reranker</span><span class="block text-[10px] text-slate-400">Retriever grabs 10
+                                        candidates, cross-encoder keeps the best Top K</span></span>
+                            </label>
+                            <select id="reranker-model" disabled
+                                class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200">
+                                <!-- filled from /api/rerankers by app.js -->
+                            </select>
+                        </div>
+
+                        <div>
                             <span class="text-slate-400 mb-1 block">LLM Generation Provider</span>
-                            <select id="llm-model" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200">
+                            <select id="llm-model"
+                                class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200">
                                 <option value="ollama/qwen3.5:9b" selected>Ollama / qwen3.5:9b (Local)</option>
                                 <option value="ollama/llama3">Ollama / llama3 (Local)</option>
                                 <option value="ollama/mistral">Ollama / mistral (Local)</option>
@@ -167,14 +207,36 @@
                                 <option value="synthetic-evaluator">Synthetic Benchmark LLM</option>
                             </select>
                         </div>
+
+                        <!-- LLM-as-a-Judge Stage -->
+                        <div>
+                            <span class="text-slate-400 mb-1 block">LLM-as-a-Judge Stage</span>
+                            <label
+                                class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer mb-2">
+                                <input type="checkbox" id="use-llm-judge" class="accent-indigo-500">
+                                <span class="ml-2.5">
+                                    <span class="block text-xs font-semibold text-white">Enable LLM Judge</span>
+                                    <span class="block text-[10px] text-slate-400">Scores Correctness, Faithfulness
+                                        &amp; Context Relevance</span>
+                                </span>
+                            </label>
+                            <select id="judge-model" disabled
+                                class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200">
+                                <option value="ollama/qwen3.5:9b" selected>Ollama / qwen3.5:9b (Local Judge)</option>
+                                <option value="ollama/llama3">Ollama / llama3 (Local Judge)</option>
+                                <option value="ollama/mistral">Ollama / mistral (Local Judge)</option>
+                                <option value="gemini-3-flash-preview">Gemini 3 Flash (Cloud Judge)</option>
+                                <option value="synthetic-evaluator">Synthetic Heuristic Judge (Offline)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-
             </div>
 
             <!-- Run Button -->
             <div class="pt-2">
-                <button id="run-pipeline-btn" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition active:scale-[0.98]">
+                <button id="run-pipeline-btn"
+                    class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition active:scale-[0.98]">
                     <i class="fa-solid fa-play"></i>
                     <span>Run Evaluation Pipeline</span>
                 </button>
@@ -183,12 +245,13 @@
 
         <!-- Main Dashboard Content Area -->
         <main class="flex-1 overflow-y-auto p-6 space-y-6">
-
-            <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2" aria-label="Evaluation results">
+            <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2"
+                aria-label="Evaluation results">
                 <p id="evaluation-progress" role="status" aria-live="polite" class="text-sm text-indigo-300">Ready</p>
                 <p id="evaluation-error" role="alert" class="text-sm text-rose-300" hidden></p>
                 <label for="variant-select" class="block text-xs text-slate-300">Comparison result</label>
-                <select id="variant-select" disabled class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white"></select>
+                <select id="variant-select" disabled
+                    class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white"></select>
                 <p id="experiment-summary" class="text-xs text-slate-400"></p>
                 <p id="generation-sources" class="text-xs text-amber-300"></p>
                 <p id="evaluation-warning" class="text-xs text-amber-300" hidden></p>
@@ -200,41 +263,50 @@
 
             <!-- Evaluation Metrics Top Overview Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                
+
                 <!-- Metric Card 1: Retrieval Cosine Similarity (Context Construction Loss) -->
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden">
                     <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Context Cosine Sim</span>
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Context Cosine
+                            Sim</span>
                         <div class="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-400">
                             <i class="fa-solid fa-file-waveform"></i>
                         </div>
                     </div>
                     <div class="mt-2 flex items-baseline space-x-2">
                         <span id="metric-retrieval-sim" class="text-2xl font-black text-white">1.000</span>
-                        <span id="metric-retrieval-badge" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">High Match</span>
+                        <span id="metric-retrieval-badge"
+                            class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">High
+                            Match</span>
                     </div>
-                    <p class="text-[11px] text-slate-400 mt-1">Cosine similarity between unperturbed & perturbed context passages.</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Cosine similarity between unperturbed & perturbed context
+                        passages.</p>
                 </div>
 
                 <!-- Metric Card 2: Generation Cosine Similarity -->
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden">
                     <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Generation Cosine Sim</span>
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Generation Cosine
+                            Sim</span>
                         <div class="p-1.5 bg-violet-500/10 rounded-lg text-violet-400">
                             <i class="fa-solid fa-robot"></i>
                         </div>
                     </div>
                     <div class="mt-2 flex items-baseline space-x-2">
                         <span id="metric-generation-sim" class="text-2xl font-black text-white">1.000</span>
-                        <span id="metric-generation-badge" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">High Match</span>
+                        <span id="metric-generation-badge"
+                            class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">High
+                            Match</span>
                     </div>
-                    <p class="text-[11px] text-slate-400 mt-1">Cosine similarity between baseline & perturbed LLM output answers.</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Cosine similarity between baseline & perturbed LLM output
+                        answers.</p>
                 </div>
 
                 <!-- Metric Card 3: Amplification Factor -->
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden">
                     <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amplification Factor</span>
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amplification
+                            Factor</span>
                         <div class="p-1.5 bg-amber-500/10 rounded-lg text-amber-400">
                             <i class="fa-solid fa-arrow-trend-up"></i>
                         </div>
@@ -249,43 +321,49 @@
                 <!-- Metric Card 4: Propagation Status -->
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden">
                     <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Propagation Status</span>
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Propagation
+                            Status</span>
                         <div class="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400">
                             <i class="fa-solid fa-shield-halved"></i>
                         </div>
                     </div>
                     <div class="mt-2">
-                        <span id="metric-status-badge" class="inline-block text-sm font-bold px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span id="metric-status-badge"
+                            class="inline-block text-sm font-bold px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                             Absorbed (LLM Resilient)
                         </span>
                     </div>
-                    <p id="metric-status-desc" class="text-[11px] text-slate-400 mt-1.5">LLM generation logic compensated for input/context perturbation.</p>
+                    <p id="metric-status-desc" class="text-[11px] text-slate-400 mt-1.5">LLM generation logic
+                        compensated for input/context perturbation.</p>
                 </div>
 
                 <!-- Metric Card 5: Stage Failure Attribution Card -->
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden">
                     <div class="flex justify-between items-start">
-                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Root Attribution</span>
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Root
+                            Attribution</span>
                         <div class="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-400">
                             <i class="fa-solid fa-crosshairs"></i>
                         </div>
                     </div>
                     <div class="mt-2">
-                        <span id="telemetry-attribution-badge" class="inline-block text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span id="telemetry-attribution-badge"
+                            class="inline-block text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                             SUCCESS
                         </span>
                     </div>
-                    <p id="telemetry-attribution-desc" class="text-[11px] text-slate-400 mt-1.5 line-clamp-2" title="Diagnostic Attribution Explanation">
+                    <p id="telemetry-attribution-desc" class="text-[11px] text-slate-400 mt-1.5 line-clamp-2"
+                        title="Diagnostic Attribution Explanation">
                         Retriever supplied necessary context and generator produced accurate answer.
                     </p>
                 </div>
-
             </div>
 
             <!-- Granular Stage Error Telemetry Bar -->
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg">
                 <h4 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-microscope text-indigo-400"></i> Granular Pipeline Telemetry (Dense Vector, Jaccard & Stage Isolation)
+                    <i class="fa-solid fa-microscope text-indigo-400"></i> Granular Pipeline Telemetry (Dense Vector,
+                    Jaccard & Stage Isolation)
                 </h4>
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
                     <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
@@ -306,9 +384,11 @@
                     <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
                         <span class="text-[10px] text-slate-400 block font-semibold">Gen vs. Ground Truth</span>
                         <div class="flex items-center space-x-2 mt-0.5">
-                            <span title="Baseline Answer vs GT" id="telemetry-gen-gt-base" class="text-xs font-bold text-emerald-400">B: 1.00</span>
+                            <span title="Baseline Answer vs GT" id="telemetry-gen-gt-base"
+                                class="text-xs font-bold text-emerald-400">B: 1.00</span>
                             <span class="text-slate-600">|</span>
-                            <span title="Perturbed Answer vs GT" id="telemetry-gen-gt-pert" class="text-xs font-bold text-rose-400">P: 1.00</span>
+                            <span title="Perturbed Answer vs GT" id="telemetry-gen-gt-pert"
+                                class="text-xs font-bold text-rose-400">P: 1.00</span>
                         </div>
                         <span class="text-[9px] text-slate-500 block">CosineSim(E(Ans), E(GT))</span>
                     </div>
@@ -323,11 +403,57 @@
                         <span class="text-[9px] text-slate-500 block">Token F1 vs Ground Truth</span>
                     </div>
                 </div>
+
+                <!-- LLM-as-a-Judge Telemetry Sub-Bar (shown automatically when Judge is enabled) -->
+                <div id="judge-telemetry-panel"
+                    class="mt-3 pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs"
+                    hidden>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-indigo-400 block font-semibold uppercase">Judge Answer
+                            Correctness</span>
+                        <div class="flex items-center space-x-2 mt-0.5">
+                            <span id="telemetry-judge-corr-base" class="text-xs font-bold text-emerald-400">B:
+                                ---</span>
+                            <span class="text-slate-600">|</span>
+                            <span id="telemetry-judge-corr-pert" class="text-xs font-bold text-rose-400">P: ---</span>
+                        </div>
+                        <span class="text-[9px] text-slate-500 block">Semantic Answer vs. Ground Truth</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-indigo-400 block font-semibold uppercase">Judge
+                            Faithfulness</span>
+                        <div class="flex items-center space-x-2 mt-0.5">
+                            <span id="telemetry-judge-faith-base" class="text-xs font-bold text-emerald-400">B:
+                                ---</span>
+                            <span class="text-slate-600">|</span>
+                            <span id="telemetry-judge-faith-pert" class="text-xs font-bold text-rose-400">P: ---</span>
+                        </div>
+                        <span class="text-[9px] text-slate-500 block">Groundedness in Supplied Context</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-indigo-400 block font-semibold uppercase">Judge Context
+                            Relevance</span>
+                        <div class="flex items-center space-x-2 mt-0.5">
+                            <span id="telemetry-judge-rel-base" class="text-xs font-bold text-emerald-400">B: ---</span>
+                            <span class="text-slate-600">|</span>
+                            <span id="telemetry-judge-rel-pert" class="text-xs font-bold text-rose-400">P: ---</span>
+                        </div>
+                        <span class="text-[9px] text-slate-500 block">Context Sufficiency for Question</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[10px] text-indigo-400 block font-semibold uppercase">Judge Verdict &amp;
+                            Rationale</span>
+                        <span id="telemetry-judge-verdict"
+                            class="text-xs font-bold text-indigo-300 block mt-0.5">---</span>
+                        <p id="telemetry-judge-rationale" class="text-[10px] text-slate-400 mt-0.5 line-clamp-2"
+                            title=""></p>
+                    </div>
+                </div>
             </div>
 
             <!-- Side-by-Side Comparative Execution Section -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
+
                 <!-- Column 1: Unperturbed Baseline Run -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-xl">
                     <div class="bg-slate-850 px-5 py-3 border-b border-slate-800 flex items-center justify-between">
@@ -335,13 +461,19 @@
                             <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
                             <h3 class="font-bold text-sm text-white">Unperturbed Baseline Pipeline</h3>
                         </div>
-                        <span class="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">Clean Control</span>
+                        <span
+                            class="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">Clean
+                            Control</span>
                     </div>
+
                     <div class="p-5 space-y-4 flex-1">
                         <!-- Query -->
                         <div>
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Target Question</span>
-                            <div id="baseline-query-text" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-200 font-medium">
+                            <span
+                                class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Target
+                                Question</span>
+                            <div id="baseline-query-text"
+                                class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-200 font-medium">
                                 Loading question...
                             </div>
                         </div>
@@ -358,8 +490,11 @@
 
                         <!-- LLM Answer -->
                         <div class="pt-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400 block mb-1">Generated Answer</span>
-                            <div id="baseline-answer-text" class="bg-slate-950 p-3.5 rounded-xl border border-emerald-500/30 text-xs text-emerald-200 leading-relaxed font-sans">
+                            <span
+                                class="text-[11px] font-bold uppercase tracking-wider text-emerald-400 block mb-1">Generated
+                                Answer</span>
+                            <div id="baseline-answer-text"
+                                class="bg-slate-950 p-3.5 rounded-xl border border-emerald-500/30 text-xs text-emerald-200 leading-relaxed font-sans">
                                 Generating baseline response...
                             </div>
                         </div>
@@ -373,15 +508,20 @@
                             <span class="w-3 h-3 rounded-full bg-rose-500"></span>
                             <h3 class="font-bold text-sm text-white">Perturbed Test Pipeline</h3>
                         </div>
-                        <span id="perturbed-tag" class="text-[10px] font-mono bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20">
+                        <span id="perturbed-tag"
+                            class="text-[10px] font-mono bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20">
                             Spelling Typo Applied
                         </span>
                     </div>
+
                     <div class="p-5 space-y-4 flex-1">
                         <!-- Query -->
                         <div>
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Perturbed Query / Trigger</span>
-                            <div id="perturbed-query-text" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-rose-300 font-medium">
+                            <span
+                                class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Perturbed
+                                Query / Trigger</span>
+                            <div id="perturbed-query-text"
+                                class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-rose-300 font-medium">
                                 Loading perturbed query...
                             </div>
                         </div>
@@ -395,35 +535,39 @@
                                 <!-- Dynamic Context Cards -->
                             </div>
                         </div>
-
                         <details>
-                            <summary class="text-xs text-indigo-300 cursor-pointer">Retrieved passages before context edits</summary>
+                            <summary class="text-xs text-indigo-300 cursor-pointer">Retrieved passages before context
+                                edits</summary>
                             <div id="perturbed-retrieved-list" class="space-y-2 max-h-48 overflow-y-auto mt-2"></div>
                         </details>
 
                         <!-- LLM Answer -->
                         <div class="pt-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-rose-400 block mb-1">Generated Answer under Perturbation</span>
-                            <div id="perturbed-answer-text" class="bg-slate-950 p-3.5 rounded-xl border border-rose-500/30 text-xs text-rose-200 leading-relaxed font-sans">
+                            <span
+                                class="text-[11px] font-bold uppercase tracking-wider text-rose-400 block mb-1">Generated
+                                Answer under Perturbation</span>
+                            <div id="perturbed-answer-text"
+                                class="bg-slate-950 p-3.5 rounded-xl border border-rose-500/30 text-xs text-rose-200 leading-relaxed font-sans">
                                 Generating perturbed response...
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
 
             <!-- Analytics & Visualization Section -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
+
                 <!-- Chart 1: Stage Cosine Similarity Comparison -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 lg:col-span-2 shadow-lg">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h3 class="font-bold text-sm text-white flex items-center gap-2">
-                                <i class="fa-solid fa-chart-column text-indigo-400"></i> Stage Error Degradation Tracking
+                                <i class="fa-solid fa-chart-column text-indigo-400"></i> Stage Error Degradation
+                                Tracking
                             </h3>
-                            <p class="text-xs text-slate-400">Cosine similarity comparison across recent perturbation evaluation runs</p>
+                            <p class="text-xs text-slate-400">Cosine similarity comparison across recent perturbation
+                                evaluation runs</p>
                         </div>
                         <span class="text-[10px] text-slate-400">Similarity Metric (0.0 to 1.0)</span>
                     </div>
@@ -433,35 +577,38 @@
                 </div>
 
                 <!-- History Log Table / Summary -->
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-lg">
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-lg">
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="font-bold text-sm text-white flex items-center gap-2">
                                 <i class="fa-solid fa-clock-rotate-left text-violet-400"></i> Benchmark History
                             </h3>
                             <div class="flex items-center space-x-2">
-                                <button id="export-json-btn" title="Export as JSON" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded border border-slate-700 transition">
+                                <button id="export-json-btn" title="Export as JSON"
+                                    class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded border border-slate-700 transition">
                                     <i class="fa-solid fa-file-code mr-1"></i> JSON
                                 </button>
-                                <button id="export-csv-btn" title="Export as CSV" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded border border-slate-700 transition">
+                                <button id="export-csv-btn" title="Export as CSV"
+                                    class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded border border-slate-700 transition">
                                     <i class="fa-solid fa-file-csv mr-1"></i> CSV
                                 </button>
                             </div>
                         </div>
                         <p class="text-xs text-slate-400 mb-3">Logged propagation metrics for executed test runs:</p>
-                        
+
                         <div id="history-list" class="space-y-2 max-h-56 overflow-y-auto pr-1">
                             <!-- Dynamic history items -->
                         </div>
                     </div>
-                    <div class="pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+
+                    <div
+                        class="pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
                         <span>Total Runs: <strong id="total-runs-count" class="text-white">0</strong></span>
                         <span class="text-emerald-400 font-semibold" id="resilience-rate">Resilience Rate: 100%</span>
                     </div>
                 </div>
-
             </div>
-
         </main>
     </div>
 
@@ -547,7 +694,9 @@
         </form>
     </dialog>
 
-    <!-- Main Entry Module -->
+    <!-- LLM-as-a-Judge Frontend Hook & Main Entry Module -->
+    <script type="module" src="js/llmJudgeUI.js"></script>
     <script type="module" src="js/app.js"></script>
 </body>
+
 </html>

@@ -4,7 +4,7 @@
  */
 
 import { HOTPOTQA_DATASET, loadDatasetFromBackend, getQueryByIndex } from './dataset.js';
-import { executeBackendEvaluation, checkBackendHealth, fetchRepairOptions } from './ragEngine.js';
+import { executeBackendEvaluation, checkBackendHealth, fetchRepairOptions, fetchRerankerOptions } from './ragEngine.js';
 import { loadHistoryFromStorage, saveHistoryToStorage, clearHistoryStorage, exportHistoryJSON, exportHistoryCSV } from './storage.js';
 import { PERTURBATION_LABELS, methodLabel } from './perturbations.js';
 import { renderContexts, updateMetricCards, updateHistoryUI, initChart, updateChart, renderChips, openPicker, closePicker } from './uiManager.js';
@@ -76,6 +76,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadSelectedQuery();
     bindEventListeners();
     await loadRepairOptions();
+    await loadRerankerOptions();
     updatePerturbationControls();
     
     /***
@@ -208,6 +209,11 @@ function selectedMethods() {
     return Object.keys(PERTURBATION_LABELS).filter(method => selectedPerturbations.has(method));
 }
 
+function repairLabel(name) {
+    const repair = repairCatalog.find(item => item.name === name);
+    return repair?.label || name;
+}
+
 function selectedRepairs() {
     return repairCatalog.map(repair => repair.name).filter(name => selectedRepairNames.has(name));
 }
@@ -218,6 +224,31 @@ async function loadRepairOptions() {
     const known = new Set(repairCatalog.map(repair => repair.name));
     [...selectedRepairNames].forEach(name => { if (!known.has(name)) selectedRepairNames.delete(name); });
     updatePerturbationControls();
+}
+
+//fills the reranker dropdown from /api/rerankers, same idea as loadRepairOptions
+async function loadRerankerOptions() {
+    const select = document.getElementById('reranker-model');
+    if (!select) return;
+    const data = await fetchRerankerOptions();
+    select.replaceChildren(...data.rerankers.map(r => {
+        const opt = document.createElement('option');
+        opt.value = r.name;
+        opt.textContent = r.label || r.name;
+        return opt;
+    }));
+    if (data.default) select.value = data.default;  //start on the recomended one (bge base)
+    document.getElementById('use-reranker')?.addEventListener('change', syncRerankerControls);
+    syncRerankerControls();
+}
+
+//dropdown only usable wen the checkbox is ticked, n never while a run is going
+function syncRerankerControls() {
+    const box = document.getElementById('use-reranker');
+    const select = document.getElementById('reranker-model');
+    if (!box || !select) return;
+    box.disabled = evaluationRunning || !select.options.length;  //no models loaded = backend offline, so cant turn it on
+    select.disabled = evaluationRunning || !box.checked;
 }
 
 /* ---------- popups: catalog -> detail (description + settings) ---------- */
@@ -276,7 +307,7 @@ function openRepairPicker() {
             label: 'Runs after retrieval, before the answer is generated',
             items: repairCatalog.map(repair => ({
                 id: repair.name,
-                title: repair.name,
+                title: repair.label || repair.name,
                 description: repair.description,
                 selected: selectedRepairNames.has(repair.name)
             }))
@@ -293,7 +324,7 @@ function openDetail(kind, id) {
     const selected = isPerturbation ? selectedPerturbations.has(id) : selectedRepairNames.has(id);
 
     document.getElementById('detail-kind').textContent = isPerturbation ? 'Perturbation' : 'Repair';
-    document.getElementById('detail-title').textContent = info.name;
+    document.getElementById('detail-title').textContent = isPerturbation ? info.name : (info.label || info.name);
     document.getElementById('detail-description').textContent = info.description || 'No description provided.';
 
     // Show only this item's settings, filled with its last confirmed values.
@@ -391,7 +422,7 @@ function updatePerturbationControls() {
         }),
         { disabled: evaluationRunning, onEdit: id => openDetail('perturbation', id), onRemove: id => removeSelection('perturbation', id) });
     renderChips('repair-chips', 'repair-empty',
-        repairs.map(name => ({ id: name, label: name, title: `Edit ${name}` })),
+        repairs.map(name => { const label = repairLabel(name); return { id: name, label, title: `Edit ${label}` }; }),
         { disabled: evaluationRunning, onEdit: id => openDetail('repair', id), onRemove: id => removeSelection('repair', id) });
     // Nothing to add when the backend registers no repairs.
     const addRepair = document.getElementById('add-repair-btn');
@@ -504,7 +535,8 @@ function renderVariant(result) {
         context_recall_perturbed: metrics.context_recall_perturbed,
         answer_f1_perturbed: metrics.answer_f1_perturbed,
         failure_attribution: metrics.failure_attribution,
-        failure_root_cause: metrics.failure_root_cause
+        failure_root_cause: metrics.failure_root_cause,
+        failure_localisation: result.failure_localisation
     });
 
 }
@@ -552,6 +584,8 @@ export async function executeEvaluation() {
             embeddingProvider: document.getElementById('embedding-provider').value,
             searchType: document.getElementById('search-type').value,
             topK: Number(document.getElementById('top-k').value),
+            useReranker: document.getElementById('use-reranker').checked,
+            rerankerModel: document.getElementById('reranker-model').value,
             llmModel: document.getElementById('llm-model').value,
             onEvent: event => {
                 if (event.event === 'progress') document.getElementById('evaluation-progress').textContent = event.message;
@@ -578,8 +612,8 @@ export async function executeEvaluation() {
                 amplificationFactor: variant.metrics.amplification_factor,
                 statusCategory: variant.metrics.status_category,
                 status: variant.metrics.status_text,
-                failureAttribution: variant.metrics.failure_attribution,
-                failureRootCause: variant.metrics.failure_root_cause,
+                failureAttribution: variant.failure_localisation?.failed_at||variant.metrics.failure_attribution,
+                failureRootCause: variant.failure_localisation?.reason||variant.metrics.failure_root_cause,
                 contextRecall: variant.metrics.context_recall_perturbed,
                 answerF1: variant.metrics.answer_f1_perturbed,
                 evaluationId: result.evaluation_id,
@@ -594,6 +628,8 @@ export async function executeEvaluation() {
                 llmModel: document.getElementById('llm-model').value,
                 searchType: document.getElementById('search-type').value,
                 topK: Number(document.getElementById('top-k').value),
+                useReranker: document.getElementById('use-reranker').checked,
+                rerankerModel: document.getElementById('use-reranker').checked ? document.getElementById('reranker-model').value : null,
                 result: variant
             });
         }
@@ -610,5 +646,6 @@ export async function executeEvaluation() {
         document.querySelectorAll('aside input, aside select, aside button').forEach(input => { input.disabled = false; });
         runBtn.innerHTML = '<i class="fa-solid fa-play"></i> <span>Run Evaluation Pipeline</span>';
         updatePerturbationControls();
+        syncRerankerControls();  //finally re-enables evrything, so grey the dropdown out again if reranker is unticked
     }
 }

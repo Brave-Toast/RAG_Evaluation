@@ -32,7 +32,7 @@ ALL_PERTURBATIONS = [
     "remove_evidence", "alter_facts","truncate","irrelevant", "shuffle",
 ]
 #fixes that dont follow the fix_<pertubation> naming, paird with what there suposed to fix
-DEFAULT_PAIRS=[("conflict","contradiction_filter")]
+DEFAULT_PAIRS=[("conflict","contradiction_filter")] #pertubation names comes firs, then the repair name given to it 
 MAX_METHODS_PER_REQUEST = 12 #has to match max_length in app.py, backend only lets this many pertubations thru per request
 NO_REPAIR="none"
 DEFAULT_OUTPUT=pathlib.Path(__file__).resolve().parent.parent / "results"/"comparison_runs.jsonl"
@@ -106,12 +106,14 @@ def rows_from_response(response,question,repair,seed,args):
     #perturbation_applied = did the pertubation acutally change anything or not
     #repair_applied = did the fix do somthing or did it jsut skip
     #synthetic = llm failed and backend gave a fake answer instead, we dont want thoes in the table
+    #failed_at = swap tset result, wich stage broke teh anwser (QUERY/RETRIEVAL/CONTEXT/GENERATION)
     rows=[]
     for variant in response.get("variants", []):
         perturbation=variant["methods"][0]
         changes = variant.get("changes",[])
         repair_changes=[c for c in changes if c.get("method") not in ALL_PERTURBATIONS]
         m=variant["metrics"]
+        loc=variant.get("failure_localisation") or {}
         rows.append({
             "timestamp":datetime.datetime.now().isoformat(timespec="seconds"),
             "question_id": str(question["id"]),
@@ -133,6 +135,8 @@ def rows_from_response(response,question,repair,seed,args):
             "answer_vs_truth_perturbed":m.get("generation_vs_gt_perturbed"),
             "failure_attribution":m.get("failure_attribution"),
             "failure_root_cause": m.get("failure_root_cause"),
+            "failed_at":loc.get("failed_at"),
+            "failed_at_reason":loc.get("reason"),
             "baseline_source":variant.get("baseline_generation_source"),
             "perturbed_source":variant.get("perturbed_generation_source"),
             "synthetic":"synthetic" in (variant.get("baseline_generation_source"),variant.get("perturbed_generation_source")),

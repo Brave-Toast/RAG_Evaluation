@@ -7,10 +7,13 @@ writes 2 files in results/
     comparison_table.csv - same thing for excel / charts
 
 how to read it (answer F1 = how many words the answer shares with the ground truth, 0 to 1)
-    Clean      avg F1 on the orignal question, nothing broken
-    Broken     avg F1 after the pertubation with no fix
-    Fixed      avg F1 after the pertubation with the fix turned on
-    Recovered  how much of the lost F1 the fix got back = (Fixed - Broken) / (Clean - Broken)
+    Accuracy        how many anwsers were rigth out of all of them (f1>=0.5 counts as rigth)
+    Baseline        the orignal question, nothing broken
+    Perturbed       after the pertubation with no fix
+    Repaired        after the pertubation with the fix turned on
+    Recovery Rate   how much of the lost F1 the fix got back = (Repaired - Perturbed) / (Baseline - Perturbed)
+    Failure Stage   wich stage the swap tset blamed (QUERY/RETRIEVAL/CONTEXT/GENERATION), only counts qustions
+                    wher the baseline was rigth
 
 stuff we leave out so the numbers are fair
     - questions where the pertubation didnt acutally change anything (nothing to fix)
@@ -37,6 +40,22 @@ def load_rows(path):
         if line.strip():
             rows.append(json.loads(line))
     return rows
+
+def count_correct(scores):
+    #how many anwsers were rigth out of all of them, f1>=0.5 counts as rigth (same cutof as the backend)
+    scores=list(scores)
+    return f"{sum(1 for x in scores if (x or 0)>=0.5)}/{len(scores)}"
+
+def count_failed_at(rows):
+    #counts wich stage broke the anwser using teh swap tset result
+    #only counts runs wher the clen anwser was rigth, othrwise the pertubation didnt cause it
+    counts=defaultdict(int)
+    for row in rows:
+        stage=row.get("failed_at")
+        if not stage or stage in ("NONE","UNKNOWN"):continue
+        if (row.get("answer_f1_baseline") or 0)<0.5:continue
+        counts[stage]+=1
+    return ", ".join(f"{s} {n}" for s,n in sorted(counts.items(),key=lambda x:-x[1])) or None
 
 def build_table(rows,include_unapplied=False, include_synthetic=False):
     #if somthing got run twice jsut keep the latest one
@@ -80,8 +99,11 @@ def build_table(rows,include_unapplied=False, include_synthetic=False):
             recovered=(fixed-broken)/drop if r and drop>=MIN_DROP_FOR_RECOVERY else None
             table.append({
                 "perturbation":p,
-                "repair":r or "(no fix yet)",
+                "repair":r or "(no repair available)",
                 "questions": len(pairs),
+                "clean_correct":count_correct(b["answer_f1_baseline"] for b,_ in pairs),
+                "broken_correct":count_correct(b["answer_f1_perturbed"] for b,_ in pairs),
+                "fixed_correct":count_correct(f["answer_f1_perturbed"] for _,f in pairs) if r else None,
                 "clean_f1":round(clean,3),
                 "broken_f1":round(broken, 3),
                 "fixed_f1":None if fixed is None else round(fixed,3),
@@ -90,6 +112,8 @@ def build_table(rows,include_unapplied=False, include_synthetic=False):
                 "fix_triggered_pct":round(100*mean(f.get("repair_applied",False) for _,f in pairs)) if r else None,
                 "context_recall_broken":round(mean(b["context_recall_perturbed"] for b,_ in pairs),3),
                 "context_recall_fixed":round(mean(f["context_recall_perturbed"] for _, f in pairs),3) if r else None,
+                "failed_at_broken":count_failed_at(b for b,_ in pairs),
+                "failed_at_fixed":count_failed_at(f for _,f in pairs) if r else None,
             })
     return table,dict(skipped)
 
@@ -102,17 +126,17 @@ def write_markdown(table,skipped, path):
     lines=[
         "# Perturbation x Repair Comparison",
         "",
-        "Answer F1 against the ground truth (0 to 1). Recovered = share of the lost F1 the fix won back.",
+        "Accuracy = answers with F1 >= 0.5 out of all questions. F1 = word overlap with the ground truth (0 to 1). Recovery Rate = share of the lost F1 the repair won back. Failure Stage = where the swap test found the answer broke (no repair).",
         "",
-        "| Perturbation | Fix | Questions | Clean | Broken | Fixed | Change | Recovered | Fix triggered |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| Perturbation | Repair Method | Sample Size | Baseline Accuracy | Perturbed Accuracy | Repaired Accuracy | Baseline F1 | Perturbed F1 | Repaired F1 | F1 Gain | Recovery Rate | Repair Trigger Rate | Failure Stage |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for row in table:
         change=row["change_from_fix"]
         lines.append(
-            f"| {row['perturbation']} | {row['repair']} | {row['questions']} | {row['clean_f1']} | {row['broken_f1']} | "
+            f"| {row['perturbation']} | {row['repair']} | {row['questions']} | {row['clean_correct']} | {row['broken_correct']} | {fmt(row['fixed_correct'])} | {row['clean_f1']} | {row['broken_f1']} | "
             f"{fmt(row['fixed_f1'])} | {'-' if change is None else f'{change:+}'} | {fmt(row['recovered_pct'],'%')} | "
-            f"{fmt(row['fix_triggered_pct'], '%')} |"
+            f"{fmt(row['fix_triggered_pct'], '%')} | {fmt(row['failed_at_broken'])} |"
         )
     if skipped:
         lines+=["", "Left out: " + ", ".join(f"{n} run(s) ({why})" for why,n in skipped.items()) + "."]
