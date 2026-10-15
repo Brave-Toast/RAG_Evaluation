@@ -4,11 +4,20 @@ each repair funciton gets added to REPAIR_REGISTRY under a name, then apply_repa
 jsut looks up whichver ones were askd for and runs them one after antoher
 """
 
+import json
+import pathlib
 import re
+from functools import lru_cache
 from typing import Dict, Callable
+
+try:
+    from spellchecker import SpellChecker
+except ImportError:
+    SpellChecker = None
 
 #A dictionary that holds the label for repair and thjen would call the function to fix a query issue
 REPAIR_REGISTRY: Dict[str, Callable] = {}
+PRE_RETRIEVAL_REPAIRS = {"fix_spelling"}
 
 
 def register_repair(name):
@@ -35,6 +44,87 @@ def apply_repair_methods(query, contexts, methods, config=None):
         query, contexts, record = fn(query, contexts, config)
         changes.append(record)
     return query, contexts, changes
+
+
+_WORD_RE = re.compile(r"[A-Za-z]+(?:['\u2019-][A-Za-z]+)*")
+_DATASET_PATH = pathlib.Path(__file__).with_name("hotpotqa_dataset.json")
+
+
+@lru_cache(maxsize=1)
+def _spelling_resources():
+    """Build a spell checker plus a case-insensitive corpus/entity vocabulary."""
+    if SpellChecker is None:
+        return None, set(), set()
+    checker = SpellChecker(distance=1)
+    corpus_words, protected_words = set(), set()
+    try:
+        rows = json.loads(_DATASET_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        rows = []
+    for row in rows:
+        words = [m.group(0).casefold() for m in _WORD_RE.finditer(row.get("question", ""))]
+        corpus_words.update(words)
+        checker.word_frequency.load_words(words)
+        for context in row.get("contexts", []):
+            words = [m.group(0).casefold() for m in _WORD_RE.finditer(context.get("title", ""))]
+            protected_words.update(words)
+            corpus_words.update(words)
+            checker.word_frequency.load_words(words)
+        for title in row.get("gold_titles", []):
+            words = [m.group(0).casefold() for m in _WORD_RE.finditer(title)]
+            protected_words.update(words)
+            corpus_words.update(words)
+            checker.word_frequency.load_words(words)
+    return checker, corpus_words, protected_words
+
+
+def _restore_case(original, replacement):
+    if original.isupper():
+        return replacement.upper()
+    if original[:1].isupper():
+        return replacement.capitalize()
+    return replacement
+
+
+@register_repair("fix_spelling")
+def repair_fix_spelling(query, contexts, config=None):
+    """Conservatively correct query typos before retrieval."""
+    checker, corpus_words, protected_words = _spelling_resources()
+    if checker is None:
+        return query, contexts, {
+            "method": "fix_spelling", "stage": "pre_retrieval_repair", "status": "skipped",
+            "summary": "pyspellchecker is not installed; query unchanged.", "details": [],
+        }
+    extra_entities = set()
+    for value in (config or {}).get("protected_entities", []):
+        extra_entities.update(m.group(0).casefold() for m in _WORD_RE.finditer(value or ""))
+    protected = protected_words | extra_entities
+    edits = []
+
+    def replace(match):
+        original = match.group(0)
+        lower = original.casefold()
+        if (len(lower) <= 3 or lower in protected or lower in corpus_words or
+                "-" in original or "'" in original or "\u2019" in original):
+            return original
+        candidate = checker.correction(lower)
+        if not candidate or candidate == lower:
+            return original
+        # Unknown capitalized words are probably names. Only restore one to a
+        # candidate observed in this benchmark corpus.
+        if original[:1].isupper() and candidate not in corpus_words:
+            return original
+        fixed = _restore_case(original, candidate)
+        edits.append({"original": original, "replacement": fixed})
+        return fixed
+
+    repaired = _WORD_RE.sub(replace, query)
+    return repaired, contexts, {
+        "method": "fix_spelling", "stage": "pre_retrieval_repair",
+        "status": "applied" if edits else "skipped",
+        "summary": f"Corrected {len(edits)} query token(s) before retrieval." if edits else "No safe spelling correction found; query unchanged.",
+        "details": edits,
+    }
 
 #@register_repair("noop") calls register_repair fisrt with the name, then feeds repair_noop into wrapper to save it in the dict
 @register_repair("noop")
@@ -118,7 +208,6 @@ def repair_contradiction_filter(query, contexts, config=None):
     return query, kept, record
 
 
-<<<<<<< HEAD
 @register_repair("fix_shuffle")
 def repair_fix_shuffle(query, contexts, config=None):
     """Restore shuffled passages to descending stored retrieval-score order."""
@@ -220,7 +309,6 @@ def repair_fix_truncate(query, contexts, config=None):
             "unresolved_cutoffs": unresolved,
         },
     }
-=======
 @register_repair("contradiction_filter_text_only")
 def repair_contradiction_filter_text_only(query, contexts):
     """Same as contradiction_filter but ignores the title, so it checks text only."""
@@ -450,4 +538,3 @@ def repair_fix_alter_facts(query, contexts):
 def repair_fix_alter_facts_drop(query, contexts):
     """Cross-checks numbers across passages; drops the passage whose figure is out-voted or has an impossible date."""
     return _fix_alter_facts(query, contexts, "fix_alter_facts_drop", drop=True)
->>>>>>> 84bd60d679734b7140c19dd9afa895a404a7aa8d

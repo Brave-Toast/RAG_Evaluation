@@ -27,7 +27,7 @@ if __package__:
     from .isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                     calculate_context_recall, calculate_context_precision,
                                     diagnose_failure)
-    from .repairs import apply_repair_methods, REPAIR_REGISTRY
+    from .repairs import apply_repair_methods, PRE_RETRIEVAL_REPAIRS, REPAIR_REGISTRY
 else:
     from perturbations import (Method, PRE_RETRIEVAL, PerturbationSettings, ordered_methods,
                                method_rng, change_record, distractor_pool, apply_context_methods, perturb_query_with_emojis,
@@ -35,7 +35,7 @@ else:
     from isolation_metrics import (calculate_token_f1, calculate_exact_match,
                                   calculate_context_recall, calculate_context_precision,
                                   diagnose_failure)
-    from repairs import apply_repair_methods, REPAIR_REGISTRY
+    from repairs import apply_repair_methods, PRE_RETRIEVAL_REPAIRS, REPAIR_REGISTRY
 
 app = FastAPI(
     title="Modular RAG Evaluation & Perturbation Backend API",
@@ -312,7 +312,7 @@ def ensure_ollama_model_pulled(model_name:str)->bool:
     except Exception as e:
         print(f"Pull error for '{model_name}': {e}")
     return False
-          
+
 def normalize_vector(vec: np.ndarray) -> np.ndarray:
     """Converts an embedding to float32 and normalizes it to unit length."""
     vec = np.asarray(vec, dtype=np.float32)
@@ -647,7 +647,7 @@ async def generate_llm_answer(
                             "prompt": f"{system_prompt}\n\n{prompt}",
                             "stream": False,
                             "options": {
-                                "num_predict": 8000
+                            "num_predict": 8000
                             }
                         }
                     )
@@ -726,7 +726,7 @@ async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key:
                         "model": model_name,
                         "prompt": f"{rephrase_system_prompt}\n\n{prompt}",
                         "stream": False,
-                        "options": {
+                        "options": {    
                             "num_predict": 8000
                         }
                     }
@@ -1106,6 +1106,23 @@ async def evaluation_events(req: EvaluationRequest):
             changes.append(change_record("entity_substitution", "pre_retrieval", sub_detail is not None,
                                          "Substituted a named entity in the question." if sub_detail else "No known entity found in the question, or no distractor pool available; question unchanged.",
                                          [sub_detail] if sub_detail else []))
+        pre_retrieval_repairs = [
+            method for method in (req.repair_methods or []) if method in PRE_RETRIEVAL_REPAIRS
+        ]
+        post_retrieval_repairs = [
+            method for method in (req.repair_methods or []) if method not in PRE_RETRIEVAL_REPAIRS
+        ]
+        if pre_retrieval_repairs:
+            query, _, repair_changes = apply_repair_methods(
+                query, [], pre_retrieval_repairs,
+                {"protected_entities": [c.title for c in clean] + gold_titles},
+            )
+            changes.extend(repair_changes)
+        if "conflict" in selected:
+            candidates = inject_conflicting_context(candidates, query, req.ground_truth)
+            changes.append(change_record("conflict", "pre_retrieval", True,
+                                         "Added contradictory candidate document; retrieval determines whether it reaches generation.",
+                                         [candidates[0].model_dump()]))
         if "metadata_injection" in selected:
             meta_candidate, meta_change = build_metadata_boosted_candidate(
                 query, pool, [c.model_dump() for c in candidates], req.settings, method_rng(seed, "metadata_injection"),
@@ -1113,13 +1130,8 @@ async def evaluation_events(req: EvaluationRequest):
             changes.append(meta_change)
             if meta_candidate:
                 candidates = [ContextDoc(**meta_candidate)] + candidates
-        if "conflict" in selected:
-            candidates = inject_conflicting_context(candidates, query, req.ground_truth)
-            changes.append(change_record("conflict", "pre_retrieval", True,
-                                         "Added contradictory candidate document; retrieval determines whether it reaches generation.",
-                                         [candidates[0].model_dump()]))
 
-        if PRE_RETRIEVAL.intersection(selected):
+        if PRE_RETRIEVAL.intersection(selected) or pre_retrieval_repairs:
             retrieved = await asyncio.to_thread(
                 perform_vector_retrieval, candidates, query, req.search_type, req.top_k, req.embedding_provider,
             )
@@ -1131,14 +1143,14 @@ async def evaluation_events(req: EvaluationRequest):
         )
         changes.extend(context_changes)
         final_contexts = [ContextDoc(**doc) for doc in final_docs]
-        if req.repair_methods:
+        if post_retrieval_repairs:
             repair_config = {
                 # apply_context_methods() mutates copies, so this is the exact
                 # legitimate post-retrieval full-text source for restoration.
                 "full_contexts": [c.model_dump() for c in retrieved],
             }
             query, repaired_docs, repair_changes = apply_repair_methods(
-                query, [c.model_dump() for c in final_contexts], req.repair_methods, repair_config
+                query, [c.model_dump() for c in final_contexts], post_retrieval_repairs, repair_config
             )
             final_contexts = [ContextDoc(**doc) for doc in repaired_docs]
             changes.extend(repair_changes)

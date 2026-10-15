@@ -69,5 +69,33 @@ class RerankRepairTests(unittest.TestCase):
         self.assertEqual(changes[0]["status"], "applied")
 
 
+class SpellingRepairTests(unittest.TestCase):
+    def test_fix_spelling_corrects_common_typo_and_preserves_contexts(self):
+        contexts = [{"title": "Mars", "text": "Mars is a planet."}]
+        query, repaired, changes = apply_repair_methods(
+            "Which magzine was started first?", contexts, ["fix_spelling"]
+        )
+        self.assertEqual(query, "Which magazine was started first?")
+        self.assertEqual(repaired, contexts)
+        self.assertEqual(changes[0]["stage"], "pre_retrieval_repair")
+        self.assertEqual(changes[0]["status"], "applied")
+
+    def test_fix_spelling_preserves_known_proper_names_and_rare_entities(self):
+        query = "Did Echosmith meet Mohan Singh Oberoi in Visakhapatnam?"
+        fixed, _, changes = apply_repair_methods(query, [], ["fix_spelling"])
+        self.assertEqual(fixed, query)
+        self.assertEqual(changes[0]["status"], "skipped")
+
+    def test_fix_spelling_preserves_unknown_capitalized_name(self):
+        query = "Where did Xylophendra perform?"
+        fixed, _, _ = apply_repair_methods(query, [], ["fix_spelling"])
+        self.assertEqual(fixed, query)
+
+    def test_fix_spelling_is_registered_as_pre_retrieval(self):
+        from backend.repairs import PRE_RETRIEVAL_REPAIRS
+        self.assertIn("fix_spelling", REPAIR_REGISTRY)
+        self.assertIn("fix_spelling", PRE_RETRIEVAL_REPAIRS)
+
+
 if __name__ == "__main__":
     unittest.main()
