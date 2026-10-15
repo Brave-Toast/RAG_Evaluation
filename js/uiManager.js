@@ -250,3 +250,98 @@ export function updateChart(history = []) {
     stageChart.data.datasets[1].data = genData.length > 0 ? genData : [1.0]; // FIXED
     stageChart.update();
 }
+
+/* ------------------------------------------------------------------ *
+ * Selection chips and the catalog popup (Dashboard redesign, RS-70)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Renders the selected items as chips: click the label to edit, click x to remove.
+ * @param {string} containerId  element that holds the chips
+ * @param {string} emptyId      element shown when nothing is selected
+ * @param {Array<{id:string,label:string,title?:string}>} items
+ * @param {{onEdit:Function,onRemove:Function,disabled?:boolean}} options
+ */
+export function renderChips(containerId, emptyId, items, { onEdit, onRemove, disabled = false }) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.replaceChildren(...items.map(item => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex items-center max-w-full rounded-full border border-indigo-500/40 bg-indigo-500/10 text-indigo-300 text-[11px] font-semibold';
+        chip.dataset.chipId = item.id;
+
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'pl-2.5 pr-1.5 py-1 truncate hover:text-white rounded-l-full disabled:opacity-50';
+        edit.textContent = item.label;
+        edit.title = item.title || `Edit ${item.label}`;
+        edit.disabled = disabled;
+        edit.addEventListener('click', () => onEdit(item.id));
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'pl-1 pr-2 py-1 text-indigo-300/70 hover:text-rose-300 rounded-r-full disabled:opacity-50';
+        remove.setAttribute('aria-label', `Remove ${item.label}`);
+        remove.title = 'Remove';
+        remove.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        remove.disabled = disabled;
+        remove.addEventListener('click', () => onRemove(item.id));
+
+        chip.append(edit, remove);
+        return chip;
+    }));
+    const empty = document.getElementById(emptyId);
+    if (empty) empty.hidden = items.length > 0;
+}
+
+/**
+ * Opens the catalog popup listing everything that can be added.
+ * @param {{title:string,groups:Array<{label?:string,items:Array<{id:string,title:string,description?:string,selected?:boolean}>}>,onPick:Function}} config
+ */
+export function openPicker({ title, groups, onPick }) {
+    const dialog = document.getElementById('picker-dialog');
+    document.getElementById('picker-title').textContent = title;
+    const list = document.getElementById('picker-list');
+    list.replaceChildren(...groups.map(group => {
+        const section = document.createElement('div');
+        section.className = 'space-y-2';
+        if (group.label) {
+            const heading = document.createElement('p');
+            heading.className = 'text-[10px] font-bold uppercase tracking-wider text-slate-400';
+            heading.textContent = group.label;
+            section.append(heading);
+        }
+        group.items.forEach(item => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'w-full text-left p-2.5 rounded-lg bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-indigo-500/60 transition flex items-start justify-between gap-3';
+            const text = document.createElement('span');
+            const name = document.createElement('span');
+            name.className = 'block text-xs font-semibold text-white';
+            name.textContent = item.title;
+            text.append(name);
+            if (item.description) {
+                const desc = document.createElement('span');
+                desc.className = 'block text-[10px] text-slate-400 mt-0.5';
+                desc.textContent = item.description;
+                text.append(desc);
+            }
+            button.append(text);
+            if (item.selected) {
+                const badge = document.createElement('span');
+                badge.className = 'shrink-0 text-[9px] font-bold uppercase text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded px-1.5 py-0.5';
+                badge.textContent = 'Selected';
+                button.append(badge);
+            }
+            button.addEventListener('click', () => onPick(item.id));
+            section.append(button);
+        });
+        return section;
+    }));
+    if (!dialog.open) dialog.showModal();
+}
+
+export function closePicker() {
+    const dialog = document.getElementById('picker-dialog');
+    if (dialog?.open) dialog.close();
+}

@@ -92,111 +92,31 @@
                 <!-- Perturbation Module Settings -->
                 <div id="perturbation-controls" class="space-y-3">
                     <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-wider">2. Perturbations</h2>
-                    <p class="text-[11px] text-slate-300">Select any one or more methods. Question changes and document changes can each run on their own.</p>
+                    <p class="text-[11px] text-slate-300">Choose what to change. Click <strong>Add</strong> to pick an item, read what it does and set its options.</p>
                     <label class="block text-xs text-slate-300" for="evaluation-mode">Evaluation mode</label>
                     <select id="evaluation-mode" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
                         <option value="combined">Combined</option>
                         <option value="separate">Separate comparisons</option>
                     </select>
-                    <fieldset class="space-y-2"><legend class="text-xs text-slate-400 mb-2">Question changes (before retrieval)</legend>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="spelling" checked class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Spelling errors</span><span class="block text-[10px] text-slate-400">Random swaps, drops and substitutions</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="rephrase" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Query rephrasing</span><span class="block text-[10px] text-slate-400">Reword the question using the selected model</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="emoji" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Emoji perturbation</span><span class="block text-[10px] text-slate-400">Insert symbols or encode words and dates</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="negation_flip" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Negation flip</span><span class="block text-[10px] text-slate-400">Insert or remove a "not" to flip question polarity</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="entity_substitution" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Entity substitution</span><span class="block text-[10px] text-slate-400">Swap a known entity for an unrelated one</span></span>
-                        </label>
-                    </fieldset>
-                    <fieldset class="space-y-2"><legend class="text-xs text-slate-400 mb-2">Document changes</legend>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="conflict" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Conflicting context</span><span class="block text-[10px] text-slate-400">Add a contradictory candidate before retrieval</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="metadata_injection" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Metadata injection</span><span class="block text-[10px] text-slate-400">Before retrieval; tags an off-topic passage with query keywords</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="remove_evidence" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Remove supporting evidence</span><span class="block text-[10px] text-slate-400">After retrieval; falls back to highest-ranked passage</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="irrelevant" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Add irrelevant passages</span><span class="block text-[10px] text-slate-400">After retrieval; sample other benchmark questions</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="alter_facts" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Alter facts</span><span class="block text-[10px] text-slate-400">After retrieval; replace numbers and date tokens</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="shuffle" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Shuffle passage order</span><span class="block text-[10px] text-slate-400">After retrieval; preserve passage contents</span></span>
-                        </label>
-                        <label class="flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer">
-                            <input type="checkbox" name="perturbation-type" value="truncate" class="accent-indigo-500">
-                            <span class="ml-2.5"><span class="block text-xs font-semibold text-white">Truncate passages</span><span class="block text-[10px] text-slate-400">After retrieval; retain a percentage of text</span></span>
-                        </label>
-                    </fieldset>
-                    <fieldset class="space-y-2"><legend class="text-xs text-slate-400 mb-2">Repairs (after retrieval, before the answer)</legend>
-                        <div id="repair-options" class="space-y-2"></div>
-                        <p id="repair-empty" class="text-[10px] text-slate-400">No repairs registered yet. Add one in backend/repairs.py and it appears here.</p>
-                    </fieldset>
-                    <div data-method-settings="spelling">
-                        <label for="typo-rate-slider" class="text-xs text-slate-300">Typo severity: <span id="typo-rate-val">25%</span></label>
-                        <input type="range" id="typo-rate-slider" min="0" max="100" step="5" value="25" class="w-full accent-indigo-500">
+
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="text-xs font-semibold text-slate-200">Perturbations</span>
+                        <button type="button" id="add-perturbation-btn" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2.5 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
                     </div>
-                    <div data-method-settings="emoji" class="space-y-2" hidden>
-                        <label for="emoji-style" class="block text-xs text-slate-300">Emoji style</label>
-                        <select id="emoji-style" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
-                            <option value="insert">Insert emojis</option>
-                            <option value="substitute">Encode words and dates</option>
-                            <option value="mixed" selected>Insert + encode</option>
-                        </select>
-                        <label for="emoji-count" class="block text-xs text-slate-300">Maximum emoji edits</label>
-                        <input id="emoji-count" type="number" value="3" min="1" max="20" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
-                        <div id="emoji-position-container">
-                            <label for="emoji-position" class="block text-xs text-slate-300 mb-1">Insertion position</label>
-                            <select id="emoji-position" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
-                                <option value="prefix">Beginning</option>
-                                <option value="suffix" selected>End</option>
-                                <option value="between_words">Between words</option>
-                            </select>
-                        </div>
-                        <p class="text-[10px] text-slate-400">before → b4️⃣ · great → gr8️⃣ · 2026 → 2️⃣0️⃣2️⃣6️⃣. One word/date replacement counts as one edit. Word encodings can introduce ambiguity.</p>
+                    <div id="perturbation-chips" class="flex flex-wrap gap-1.5" aria-label="Selected perturbations"></div>
+                    <p id="perturbation-empty" class="text-[10px] text-slate-400" hidden>No perturbation selected.</p>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="text-xs font-semibold text-slate-200">Repairs <span class="font-normal text-slate-400">(after retrieval)</span></span>
+                        <button type="button" id="add-repair-btn" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2.5 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
                     </div>
-                    <div data-method-settings="metadata_injection" hidden>
-                        <label for="metadata-term-count" class="block text-xs text-slate-300 mb-1">Injected keyword count</label>
-                        <input id="metadata-term-count" type="number" value="4" min="1" max="10" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
-                    </div>
-                    <div data-method-settings="remove_evidence" hidden>
-                        <label for="remove-count" class="block text-xs text-slate-300 mb-1">Passages to remove</label>
-                        <input id="remove-count" type="number" value="1" min="1" max="5" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
-                    </div>
-                    <div data-method-settings="irrelevant" hidden>
-                        <label for="irrelevant-count" class="block text-xs text-slate-300 mb-1">Passages to add</label>
-                        <input id="irrelevant-count" type="number" value="1" min="1" max="5" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
-                    </div>
-                    <div data-method-settings="alter_facts" hidden>
-                        <label for="fact-count" class="block text-xs text-slate-300 mb-1">Number/date replacements</label>
-                        <input id="fact-count" type="number" value="1" min="1" max="20" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
-                    </div>
-                    <div data-method-settings="truncate" hidden>
-                        <label for="retain-percent" class="block text-xs text-slate-300 mb-1">Text retained (%)</label>
-                        <input id="retain-percent" type="number" value="50" min="1" max="100" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
-                    </div>
+                    <div id="repair-chips" class="flex flex-wrap gap-1.5" aria-label="Selected repairs"></div>
+                    <p id="repair-empty" class="text-[10px] text-slate-400" hidden>No repair selected.</p>
+
                     <label for="perturbation-seed" class="block text-xs text-slate-300">Random seed (optional)</label>
                     <input id="perturbation-seed" type="number" min="0" max="2147483647" step="1" placeholder="Automatic" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
                     <p class="text-[10px] text-slate-400">Seeds repeat random edits, not model responses.</p>
@@ -544,6 +464,88 @@
 
         </main>
     </div>
+
+    <style>
+        dialog.app-dialog { margin: auto; padding: 0; border: 0; background: transparent; color: inherit; max-width: calc(100vw - 2rem); }
+        dialog.app-dialog::backdrop { background: rgba(2, 6, 23, 0.75); backdrop-filter: blur(2px); }
+    </style>
+
+    <!-- Popup 1: catalog (pick a perturbation or a repair) -->
+    <dialog id="picker-dialog" class="app-dialog">
+        <div class="w-[30rem] max-w-full max-h-[85vh] flex flex-col bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800">
+                <h2 id="picker-title" class="font-bold text-sm text-white"></h2>
+                <button type="button" id="picker-close" class="text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="picker-list" class="p-4 space-y-3 overflow-y-auto"></div>
+        </div>
+    </dialog>
+
+    <!-- Popup 2: description + settings of one item -->
+    <dialog id="detail-dialog" class="app-dialog">
+        <form id="detail-form" novalidate class="w-[28rem] max-w-full max-h-[85vh] flex flex-col bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl">
+            <div class="px-5 py-3 border-b border-slate-800">
+                <span id="detail-kind" class="text-[10px] font-bold uppercase tracking-wider text-indigo-400"></span>
+                <h2 id="detail-title" class="font-bold text-base text-white"></h2>
+            </div>
+            <div class="p-5 space-y-4 overflow-y-auto">
+                <p id="detail-description" class="text-xs text-slate-300 leading-relaxed"></p>
+                <div id="detail-settings" class="space-y-3">
+                    <p id="detail-no-settings" class="text-[11px] text-slate-400" hidden>This item has no settings.</p>
+                    <div data-method-settings="spelling">
+                        <label for="typo-rate-slider" class="text-xs text-slate-300">Typo severity: <span id="typo-rate-val">25%</span></label>
+                        <input type="range" id="typo-rate-slider" min="0" max="100" step="5" value="25" class="w-full accent-indigo-500">
+                    </div>
+                    <div data-method-settings="emoji" class="space-y-2" hidden>
+                        <label for="emoji-style" class="block text-xs text-slate-300">Emoji style</label>
+                        <select id="emoji-style" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                            <option value="insert">Insert emojis</option>
+                            <option value="substitute">Encode words and dates</option>
+                            <option value="mixed" selected>Insert + encode</option>
+                        </select>
+                        <label for="emoji-count" class="block text-xs text-slate-300">Maximum emoji edits</label>
+                        <input id="emoji-count" type="number" value="3" min="1" max="20" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                        <div id="emoji-position-container">
+                            <label for="emoji-position" class="block text-xs text-slate-300 mb-1">Insertion position</label>
+                            <select id="emoji-position" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                                <option value="prefix">Beginning</option>
+                                <option value="suffix" selected>End</option>
+                                <option value="between_words">Between words</option>
+                            </select>
+                        </div>
+                        <p class="text-[10px] text-slate-400">before → b4️⃣ · great → gr8️⃣ · 2026 → 2️⃣0️⃣2️⃣6️⃣. One word/date replacement counts as one edit. Word encodings can introduce ambiguity.</p>
+                    </div>
+                    <div data-method-settings="metadata_injection" hidden>
+                        <label for="metadata-term-count" class="block text-xs text-slate-300 mb-1">Injected keyword count</label>
+                        <input id="metadata-term-count" type="number" value="4" min="1" max="10" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    </div>
+                    <div data-method-settings="remove_evidence" hidden>
+                        <label for="remove-count" class="block text-xs text-slate-300 mb-1">Passages to remove</label>
+                        <input id="remove-count" type="number" value="1" min="1" max="5" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    </div>
+                    <div data-method-settings="irrelevant" hidden>
+                        <label for="irrelevant-count" class="block text-xs text-slate-300 mb-1">Passages to add</label>
+                        <input id="irrelevant-count" type="number" value="1" min="1" max="5" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    </div>
+                    <div data-method-settings="alter_facts" hidden>
+                        <label for="fact-count" class="block text-xs text-slate-300 mb-1">Number/date replacements</label>
+                        <input id="fact-count" type="number" value="1" min="1" max="20" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    </div>
+                    <div data-method-settings="truncate" hidden>
+                        <label for="retain-percent" class="block text-xs text-slate-300 mb-1">Text retained (%)</label>
+                        <input id="retain-percent" type="number" value="50" min="1" max="100" step="1" required class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white">
+                    </div>
+                </div>
+                <p id="detail-error" role="alert" class="text-xs text-rose-300" hidden></p>
+            </div>
+            <div class="flex items-center gap-2 px-5 py-3 border-t border-slate-800">
+                <button type="button" id="detail-remove" class="text-xs text-rose-300 hover:text-rose-200 px-3 py-2 rounded-lg border border-rose-500/30 bg-rose-500/10" hidden>Remove</button>
+                <span class="flex-1"></span>
+                <button type="button" id="detail-back" class="text-xs text-slate-300 hover:text-white px-3 py-2 rounded-lg border border-slate-700 bg-slate-800">Cancel</button>
+                <button type="submit" id="detail-confirm" class="text-xs font-bold text-white px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500">Add to selection</button>
+            </div>
+        </form>
+    </dialog>
 
     <!-- Main Entry Module -->
     <script type="module" src="js/app.js"></script>
