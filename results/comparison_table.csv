@@ -1,0 +1,14 @@
+perturbation,repair,questions,clean_correct,broken_correct,fixed_correct,clean_f1,broken_f1,fixed_f1,change_from_fix,recovered_pct,fix_triggered_pct,context_recall_broken,context_recall_fixed,failed_at_broken,failed_at_fixed
+alter_facts,fix_alter_facts,52,39/52,38/52,38/52,0.726,0.711,0.711,0.0,,0,0.692,0.692,CONTEXT 1,CONTEXT 1
+alter_facts,fix_alter_facts_drop,52,39/52,38/52,38/52,0.726,0.711,0.711,0.0,,0,0.692,0.692,CONTEXT 1,CONTEXT 1
+conflict,contradiction_filter,80,60/80,17/80,47/80,0.722,0.21,0.558,0.348,68,100,0.42,0.42,RETRIEVAL 43,RETRIEVAL 13
+conflict,contradiction_filter_text_only,80,60/80,17/80,17/80,0.722,0.21,0.21,0.0,0,0,0.42,0.42,RETRIEVAL 43,RETRIEVAL 43
+emoji,(no repair available),80,60/80,57/80,,0.722,0.687,,,,,0.64,,"RETRIEVAL 3, QUERY 1",
+entity_substitution,(no repair available),68,50/68,38/68,,0.707,0.545,,,,,0.519,,"QUERY 10, RETRIEVAL 5",
+irrelevant,(no repair available),80,60/80,58/80,,0.722,0.697,,,,,0.659,,CONTEXT 2,
+negation_flip,(no repair available),68,52/68,35/68,,0.738,0.498,,,,,0.645,,QUERY 17,
+remove_evidence,(no repair available),80,60/80,42/80,,0.722,0.504,,,,,0.239,,CONTEXT 18,
+rephrase,(no repair available),80,60/80,57/80,,0.722,0.689,,,,,0.659,,"RETRIEVAL 4, QUERY 4",
+shuffle,(no repair available),80,60/80,54/80,,0.722,0.662,,,,,0.659,,CONTEXT 6,
+spelling,(no repair available),74,55/74,46/74,,0.72,0.618,,,,,0.53,,"RETRIEVAL 7, QUERY 4",
+truncate,(no repair available),80,60/80,49/80,,0.722,0.593,,,,,0.659,,CONTEXT 11,

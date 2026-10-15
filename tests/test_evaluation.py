@@ -20,7 +20,7 @@ with patch.dict(sys.modules, {
 }):
     backend = importlib.import_module("backend.app")
 
-from backend.perturbations import METHOD_ORDER
+from backend.perturbations import METHOD_ORDER, PRE_RETRIEVAL
 
 
 class EnsembleRetrievalTests(unittest.TestCase):
@@ -118,7 +118,7 @@ class EvaluationTests(unittest.TestCase):
             result = self.run_request(perturbation_types=list(METHOD_ORDER), mode="separate")
         self.assertEqual(generate.call_count, 1 + len(METHOD_ORDER))
         self.assertEqual(sum(not call.kwargs["is_perturbed"] for call in generate.call_args_list), 1)
-        self.assertEqual(self.retriever.call_count, 1 + len(backend.PRE_RETRIEVAL))
+        self.assertEqual(self.retriever.call_count, 1 + len(PRE_RETRIEVAL))  # baseline + each pre-retrieval variant
         self.assertEqual(len(result["variants"]), len(METHOD_ORDER))
         variants = {v["methods"][0]: v for v in result["variants"]}
         baseline = result["baseline_contexts"]

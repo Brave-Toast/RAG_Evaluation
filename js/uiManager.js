@@ -7,7 +7,18 @@ let stageChart = null;
 function escapeHTML(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 }
-
+//colurs for each stage the swap tset can blame, old labels kept so old histroy stil looks ok
+function stageColor(stage){
+    const c={"NONE":"bg-emerald-500/20 text-emerald-300 border-emerald-500/30","SUCCESS":"bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+        "QUERY":"bg-purple-500/20 text-purple-300 border-purple-500/30",
+        "RETRIEVAL":"bg-rose-500/20 text-rose-300 border-rose-500/30","RETRIEVAL_FAILURE":"bg-rose-500/20 text-rose-300 border-rose-500/30",
+        "RERANKING":"bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+        "CONTEXT":"bg-amber-500/20 text-amber-300 border-amber-500/30",
+        "GENERATION":"bg-orange-500/20 text-orange-300 border-orange-500/30","GENERATION_FAILURE":"bg-orange-500/20 text-orange-300 border-orange-500/30",
+        "PARAMETRIC_LEAKAGE":"bg-blue-500/20 text-blue-300 border-blue-500/30"}
+    return c[stage]||"bg-slate-800 text-slate-400 border-slate-700"
+}
+// if failure at Query stage, then the color is Purple, at Retrieval Red, Reranking Cyan, Context Amber, Generation Orange, and No Failure Green
 /**
  * Renders context cards into a target container.
  * @param {string} containerId 
@@ -39,7 +50,7 @@ export function renderContexts(containerId, contexts) {
             <div class="flex items-center justify-between font-bold mb-1.5 text-[11px]">
                 <span class="${isConflictDoc ? 'text-rose-400' : 'text-indigo-400'} truncate mr-2">[Doc ${i+1}] ${escapeHTML(c.title)}</span>
                 <div class="flex items-center gap-1.5 shrink-0">
-                    ${hasScore ? `<span class="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="ChromaDB Relevance Score"><i class="fa-solid fa-bullseye text-[8px] mr-1"></i>Score: ${scoreVal}</span>` : ''}
+                    ${hasScore ? `<span class="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="Relevance score (retriever, or reranker when on)"><i class="fa-solid fa-bullseye text-[8px] mr-1"></i>Score: ${scoreVal}</span>` : ''}
                     ${isConflictDoc ? '<span class="text-[9px] bg-rose-500/20 px-1.5 py-0.5 rounded text-rose-300">' + (isMetadataDoc ? 'Metadata Injected' : 'Conflicting Injected') + '</span>' : ''}
                 </div>
             </div>
@@ -83,26 +94,23 @@ export function updateMetricCards(metrics) {
     }
     document.getElementById('metric-status-desc').textContent = statusDesc || "";
 
-    // Root Failure Attribution Card
-    const attributionBadgeEl = document.getElementById('telemetry-attribution-badge');
-    const attributionDescEl = document.getElementById('telemetry-attribution-desc');
-    const verdict = failure_attribution || "SUCCESS";
-
-    if (attributionBadgeEl) {
-        attributionBadgeEl.textContent = verdict;
-        let badgeColorClass = "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
-        if (verdict === "RETRIEVAL_FAILURE") {
-            badgeColorClass = "bg-rose-500/20 text-rose-300 border-rose-500/30";
-        } else if (verdict === "GENERATION_FAILURE") {
-            badgeColorClass = "bg-amber-500/20 text-amber-300 border-amber-500/30";
-        } else if (verdict === "PARAMETRIC_LEAKAGE") {
-            badgeColorClass = "bg-blue-500/20 text-blue-300 border-blue-500/30";
-        }
-        attributionBadgeEl.className = `inline-block text-xs font-bold px-2.5 py-1 rounded-lg border ${badgeColorClass}`;
+    //root attribution card - use the swap tset result if its ther, otherwise fal bak to the old label
+    const attributionBadgeEl=document.getElementById('telemetry-attribution-badge');
+    const attributionDescEl=document.getElementById('telemetry-attribution-desc');
+    const loc=metrics.failure_localisation;
+    const verdict=loc?loc.failed_at:(failure_attribution||"SUCCESS");
+    let desc=loc?loc.reason:(failure_root_cause||"Pipeline succeeded: Retriever supplied necessary context and LLM answered accurately.");
+    if(loc&&loc.swap_answer){desc+=` (swap answer: ${loc.swap_answer})`}
+    if(attributionBadgeEl){
+        let label=verdict
+        if(loc&&verdict==="NONE")label="NO FAILURE"
+        else if(loc&&verdict!=="UNKNOWN")label=`FAILED AT: ${verdict}`
+        attributionBadgeEl.textContent=label;
+        attributionBadgeEl.className=`inline-block text-xs font-bold px-2.5 py-1 rounded-lg border ${stageColor(verdict)}`;
     }
-    if (attributionDescEl) {
-        attributionDescEl.textContent = failure_root_cause || "Pipeline succeeded: Retriever supplied necessary context and LLM answered accurately.";
-        attributionDescEl.title = failure_root_cause || "";
+    if(attributionDescEl){
+        attributionDescEl.textContent=desc;
+        attributionDescEl.title=desc;
     }
 
     // Granular telemetry fields
@@ -147,12 +155,7 @@ export function updateHistoryUI(history) {
 
         let attrBadge = "";
         if (run.failureAttribution) {
-            let attrColor = "bg-slate-800 text-slate-400 border border-slate-700";
-            if (run.failureAttribution === "SUCCESS") attrColor = "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
-            else if (run.failureAttribution === "RETRIEVAL_FAILURE") attrColor = "bg-rose-500/20 text-rose-300 border border-rose-500/30";
-            else if (run.failureAttribution === "GENERATION_FAILURE") attrColor = "bg-amber-500/20 text-amber-300 border border-amber-500/30";
-            else if (run.failureAttribution === "PARAMETRIC_LEAKAGE") attrColor = "bg-blue-500/20 text-blue-300 border border-blue-500/30";
-            attrBadge = `<span class="text-[9px] font-mono px-1.5 py-0.5 rounded ${attrColor}">${escapeHTML(run.failureAttribution)}</span>`;
+            attrBadge=`<span class="text-[9px] font-mono px-1.5 py-0.5 rounded border ${stageColor(run.failureAttribution)}">${escapeHTML(run.failureAttribution)}</span>`;
         }
 
         const recallText = run.contextRecall !== undefined ? ` | Rec: ${Number(run.contextRecall).toFixed(2)} | F1: ${Number(run.answerF1).toFixed(2)}` : '';

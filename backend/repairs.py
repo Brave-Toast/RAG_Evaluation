@@ -310,7 +310,7 @@ def repair_fix_truncate(query, contexts, config=None):
         },
     }
 @register_repair("contradiction_filter_text_only")
-def repair_contradiction_filter_text_only(query, contexts):
+def repair_contradiction_filter_text_only(query, contexts, config=None):
     """Same as contradiction_filter but ignores the title, so it checks text only."""
     kept, removed = [], []
     for doc in contexts:
@@ -328,9 +328,6 @@ def repair_contradiction_filter_text_only(query, contexts):
 
 
 # --- Altered-Facts Repair Methods (RS-62) ---
-#
-# PASTE THIS BLOCK AT THE VERY END OF backend/repairs.py (it only needs `re`, which is
-# already imported at the top of that file).
 #
 # The "alter_facts" perturbation (perturbations.py) changes numbers and dates inside the
 # retrieved passages. These repairs cross-check numbers ACROSS the retrieved passages:
@@ -529,12 +526,12 @@ def _fix_alter_facts(query, contexts, method_name, drop):
 
 
 @register_repair("fix_alter_facts")
-def repair_fix_alter_facts(query, contexts):
+def repair_fix_alter_facts(query, contexts, config=None):
     """Cross-checks numbers across passages; corrects a figure the other passages contradict and flags the rest."""
     return _fix_alter_facts(query, contexts, "fix_alter_facts", drop=False)
 
 
 @register_repair("fix_alter_facts_drop")
-def repair_fix_alter_facts_drop(query, contexts):
+def repair_fix_alter_facts_drop(query, contexts, config=None):
     """Cross-checks numbers across passages; drops the passage whose figure is out-voted or has an impossible date."""
     return _fix_alter_facts(query, contexts, "fix_alter_facts_drop", drop=True)
