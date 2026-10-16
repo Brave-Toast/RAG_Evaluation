@@ -148,6 +148,9 @@ class EvaluationTests(unittest.TestCase):
         result = self.run_request(typo_rate=0)
         self.assertEqual(result["baseline_query"], result["perturbed_query"])
         self.assertEqual(result["changes"][0]["status"], "skipped")
+        result = self.run_request(contexts=[], perturbation_types=["remove_evidence", "alter_facts", "shuffle", "truncate"])
+        self.assertEqual(result["perturbed_contexts"], [])
+        self.assertTrue(all(c["status"] == "skipped" for c in result["changes"]))
 
     def test_fix_spelling_runs_before_variant_retrieval(self):
         real_apply = backend.apply_repair_methods
@@ -168,9 +171,6 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(self.retriever.call_args_list[1].args[1], "fixed query")
         self.assertEqual(result["perturbed_query"], "fixed query")
         self.assertEqual(result["changes"][1]["stage"], "pre_retrieval_repair")
-        result = self.run_request(contexts=[], perturbation_types=["remove_evidence", "alter_facts", "shuffle", "truncate"])
-        self.assertEqual(result["perturbed_contexts"], [])
-        self.assertTrue(all(c["status"] == "skipped" for c in result["changes"]))
 
     def test_annotation_request_overrides_rank_fallback(self):
         result = self.run_request(perturbation_types=["remove_evidence"], supporting_titles=["Second"])

@@ -733,27 +733,15 @@ async def generate_llm_answer(
         if ensure_ollama_model_pulled(model_name):
             try:
                 async with httpx.AsyncClient(timeout=300.0) as client:
-                    res = await client.post(
-                        ollama_url,
-                        json={
-                            "model": model_name,
-                            "prompt": f"{system_prompt}\n\n{prompt}",
-                            "stream": False,
-                            "options": {
-                            "num_predict": 8000
-                            }
                     payload={
                         "model": model_name,
                         "prompt": f"{system_prompt}\n\n{prompt}",
                         "stream": False,
                         "options": {
                             "num_predict": 8000,
-                            "temperature":0 #no randomnes so same test gives same anwser evry time
+                            "temperature": 0,
                         }
                     }
-                    # only thinking models (qwen3, deepseek-r1) get think off, other models dont support it n might error
-                    if "qwen3" in model_name or "deepseek-r1" in model_name:
-                        payload["think"]=False
                     res = await client.post(ollama_url, json=payload)
                     if res.status_code == 200:
                         data = res.json()
@@ -824,27 +812,15 @@ async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key:
         ollama_url = "http://localhost:11434/api/generate"
         try:
             async with httpx.AsyncClient(timeout=300.0) as client:
-                res = await client.post(
-                    ollama_url,
-                    json={
-                        "model": model_name,
-                        "prompt": f"{rephrase_system_prompt}\n\n{prompt}",
-                        "stream": False,
-                        "options": {    
-                            "num_predict": 8000
-                        }
                 payload={
                     "model": model_name,
                     "prompt": f"{rephrase_system_prompt}\n\n{prompt}",
                     "stream": False,
                     "options": {
                         "num_predict": 8000,
-                        "temperature":0 #same rephrase evry run
+                        "temperature": 0,
                     }
                 }
-                #only thinkin models get think off, same as the anwser gen
-                if "qwen3" in model_name or "deepseek-r1" in model_name:
-                    payload["think"]=False
                 res = await client.post(ollama_url, json=payload)
                 if res.status_code == 200:
                     data = res.json()
@@ -1315,6 +1291,13 @@ async def evaluation_events(req: EvaluationRequest):
                 {"protected_entities": [c.title for c in clean] + gold_titles},
             )
             changes.extend(repair_changes)
+        if "metadata_injection" in selected:
+            meta_candidate, meta_change = build_metadata_boosted_candidate(
+                query, pool, [c.model_dump() for c in candidates], req.settings, method_rng(seed, "metadata_injection"),
+            )
+            changes.append(meta_change)
+            if meta_candidate:
+                candidates = [ContextDoc(**meta_candidate)] + candidates
         if "conflict" in selected:
             gt = req.ground_truth.strip().lower()
             if gt in ("yes", "no"):
@@ -1335,23 +1318,16 @@ async def evaluation_events(req: EvaluationRequest):
                 "Added contradictory candidate document; retrieval determines whether it reaches generation.",
                 [candidates[0].model_dump()]
             ))
-        if "metadata_injection" in selected:
-            meta_candidate, meta_change = build_metadata_boosted_candidate(
-                query, pool, [c.model_dump() for c in candidates], req.settings, method_rng(seed, "metadata_injection"),
-            )
-            changes.append(meta_change)
-            if meta_candidate:
-                candidates = [ContextDoc(**meta_candidate)] + candidates
         if PRE_RETRIEVAL.intersection(selected) or pre_retrieval_repairs:
-                # Re-run retrieval for pre-retrieval perturbations and repairs.
-                retrieved, pert_pool = await asyncio.to_thread(
+            # Re-run retrieval for pre-retrieval perturbations and repairs.
+            retrieved, pert_pool = await asyncio.to_thread(
                 retrieve_docs, candidates, query, req,
             )
         else:
             # Post-retrieval experiments reuse the baseline retrieval results.
             retrieved = _copy_contexts(baseline_contexts)
             pert_pool = baseline_pool
-         final_docs, context_changes = apply_context_methods(
+        final_docs, context_changes = apply_context_methods(
             [c.model_dump() for c in retrieved], selected, req.settings, seed, supporting_titles, pool,
         )
         changes.extend(context_changes)
