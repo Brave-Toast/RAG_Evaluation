@@ -9,26 +9,7 @@ function formatJudgeScore(val) {
     return typeof val === 'number' && !Number.isNaN(val) ? val.toFixed(2) : '---';
 }
 
-function updateAttributionCardFromMetrics(metrics) {
-    if (!metrics || !metrics.use_llm_judge || !metrics.failure_attribution) return;
-    const badge = document.getElementById('telemetry-attribution-badge');
-    const desc = document.getElementById('telemetry-attribution-desc');
-    if (badge) {
-        badge.textContent = metrics.failure_attribution;
-        const styles = {
-            SUCCESS: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-            RETRIEVAL_FAILURE: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
-            GENERATION_FAILURE: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-            PARAMETRIC_LEAKAGE: 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-        };
-        badge.className = `inline-block text-xs font-bold px-2.5 py-1 rounded-lg border ${styles[metrics.failure_attribution] || styles.SUCCESS
-            }`;
-    }
-    if (desc && metrics.failure_root_cause) {
-        desc.textContent = metrics.failure_root_cause;
-        desc.title = metrics.failure_root_cause;
-    }
-}
+
 
 export function renderJudgeTelemetry(metrics) {
     const panel = document.getElementById('judge-telemetry-panel');
@@ -70,8 +51,6 @@ export function renderJudgeTelemetry(metrics) {
         rationaleEl.textContent = rationale;
         rationaleEl.title = rationale;
     }
-
-    updateAttributionCardFromMetrics(metrics);
 }
 
 function getSelectedVariantMetrics(resultPayload) {

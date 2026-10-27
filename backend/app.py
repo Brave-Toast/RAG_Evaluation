@@ -742,6 +742,9 @@ async def generate_llm_answer(
                             "temperature": 0,
                         }
                     }
+                    #qwen3 can burn the hole context thinking n return an empty anwser (then we fall bak to synthetic), the judge already turns it off
+                    if model_name.startswith("qwen3"):
+                        payload["think"]=False
                     res = await client.post(ollama_url, json=payload)
                     if res.status_code == 200:
                         data = res.json()
@@ -821,6 +824,9 @@ async def generate_query_rephrase(query: str, model_choice: str, gemini_api_key:
                         "temperature": 0,
                     }
                 }
+                #same for rephrase so it dosnt come back empty
+                if model_name.startswith("qwen3"):
+                    payload["think"]=False
                 res = await client.post(ollama_url, json=payload)
                 if res.status_code == 200:
                     data = res.json()

@@ -157,8 +157,11 @@ def repair_noop(query, contexts, config=None):
 # See test_repair_accuracy.py for a precision/recall evaluation of this
 # detector against both injected and genuine (unperturbed) documents.
 
+#old markers are from the previous conflict template, kept so older runs still get caught
+#new ones match the current template in inject_conflicting_context (app.py) wich claims a wrong anwser
 _INJECTION_TEXT_MARKERS = re.compile(
-    r"conflicting modern sources|refute that|alternative facts|\[topic tags:",
+    r"conflicting modern sources|refute that|alternative facts|\[topic tags:"
+    r"|updated records confirm the answer|earlier sources that claim otherwise",
     re.IGNORECASE,
 )
 
