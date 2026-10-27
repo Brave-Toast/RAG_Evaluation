@@ -97,7 +97,9 @@ export function updateMetricCards(metrics) {
     //root attribution card - use the swap tset result if its ther, otherwise fal bak to the old label
     const attributionBadgeEl=document.getElementById('telemetry-attribution-badge');
     const attributionDescEl=document.getElementById('telemetry-attribution-desc');
-    const loc=metrics.failure_localisation;
+    //if the judge is on n says the perturbed anwser is rigth, trust it over f1 (f1 can mark a correct anwser wrong just cos of wording)
+    const judgeSaysRight=metrics.use_llm_judge&&typeof metrics.judge_correctness_perturbed==='number'&&metrics.judge_correctness_perturbed>=0.5;
+    const loc=judgeSaysRight?{failed_at:"NONE",reason:"LLM judge marked the perturbed answer correct, so no stage failed."}:metrics.failure_localisation;
     const verdict=loc?loc.failed_at:(failure_attribution||"SUCCESS");
     let desc=loc?loc.reason:(failure_root_cause||"Pipeline succeeded: Retriever supplied necessary context and LLM answered accurately.");
     if(loc&&loc.swap_answer){desc+=` (swap answer: ${loc.swap_answer})`}
@@ -107,6 +109,7 @@ export function updateMetricCards(metrics) {
         else if(loc&&verdict!=="UNKNOWN")label=`FAILED AT: ${verdict}`
         attributionBadgeEl.textContent=label;
         attributionBadgeEl.className=`inline-block text-xs font-bold px-2.5 py-1 rounded-lg border ${stageColor(verdict)}`;
+        attributionBadgeEl.dataset.source=loc?'swap':'rule';  //mark where the card value came from so the judge code dosnt overwite the swap test result
     }
     if(attributionDescEl){
         attributionDescEl.textContent=desc;

@@ -9,6 +9,9 @@ import { loadHistoryFromStorage, saveHistoryToStorage, clearHistoryStorage, expo
 import { PERTURBATION_LABELS, methodLabel } from './perturbations.js';
 import { renderContexts, updateMetricCards, updateHistoryUI, initChart, updateChart, renderChips, openPicker, closePicker } from './uiManager.js';
 
+//true when the llm judge is on n says the perturbed anwser is correct, used so the card n history agree
+const judgeRight=m=>Boolean(m&&m.use_llm_judge&&typeof m.judge_correctness_perturbed==='number'&&m.judge_correctness_perturbed>=0.5);
+
 let evaluationHistory = [];
 let currentVariants = [];
 let evaluationRunning = false;
@@ -536,7 +539,9 @@ function renderVariant(result) {
         answer_f1_perturbed: metrics.answer_f1_perturbed,
         failure_attribution: metrics.failure_attribution,
         failure_root_cause: metrics.failure_root_cause,
-        failure_localisation: result.failure_localisation
+        failure_localisation: result.failure_localisation,
+        use_llm_judge: metrics.use_llm_judge,
+        judge_correctness_perturbed: metrics.judge_correctness_perturbed
     });
 
 }
@@ -612,8 +617,9 @@ export async function executeEvaluation() {
                 amplificationFactor: variant.metrics.amplification_factor,
                 statusCategory: variant.metrics.status_category,
                 status: variant.metrics.status_text,
-                failureAttribution: variant.failure_localisation?.failed_at||variant.metrics.failure_attribution,
-                failureRootCause: variant.failure_localisation?.reason||variant.metrics.failure_root_cause,
+                //same rule as the root attribution card so they always match
+                failureAttribution: judgeRight(variant.metrics)?"NONE":(variant.failure_localisation?.failed_at||variant.metrics.failure_attribution),
+                failureRootCause: judgeRight(variant.metrics)?"LLM judge marked the perturbed answer correct, so no stage failed.":(variant.failure_localisation?.reason||variant.metrics.failure_root_cause),
                 contextRecall: variant.metrics.context_recall_perturbed,
                 answerF1: variant.metrics.answer_f1_perturbed,
                 evaluationId: result.evaluation_id,
