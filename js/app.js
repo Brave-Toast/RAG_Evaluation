@@ -7,14 +7,54 @@ import { HOTPOTQA_DATASET, loadDatasetFromBackend, getQueryByIndex } from './dat
 import { executeBackendEvaluation, checkBackendHealth, fetchRepairOptions, fetchRerankerOptions } from './ragEngine.js';
 import { loadHistoryFromStorage, saveHistoryToStorage, clearHistoryStorage, exportHistoryJSON, exportHistoryCSV } from './storage.js';
 import { PERTURBATION_LABELS, methodLabel } from './perturbations.js';
-import { renderContexts, updateMetricCards, updateHistoryUI, initChart, updateChart } from './uiManager.js';
+import { renderContexts, updateMetricCards, updateHistoryUI, initChart, updateChart, renderChips, openPicker, closePicker } from './uiManager.js';
 
 let evaluationHistory = [];
 let currentVariants = [];
 let evaluationRunning = false;
 let currentQueryObj = HOTPOTQA_DATASET[0];
 
+// ---- Selection state (the sidebar chips are drawn from this, not from checkboxes) ----
+const QUESTION_GROUP = 'Question changes (before retrieval)';
+const DOCUMENT_GROUP = 'Document changes';
+
+// What each perturbation does, shown in its popup. Settings fields live in index.html (#detail-dialog).
+const PERTURBATION_INFO = {
+    spelling: { name: 'Spelling errors', short: 'Spelling', group: QUESTION_GROUP,
+        description: 'Adds random typos to the question: swapped letters, dropped letters and substitutions. Typo severity sets how heavy the typos are.' },
+    rephrase: { name: 'Query rephrasing', short: 'Rephrase', group: QUESTION_GROUP,
+        description: 'Rewords the question with the selected LLM while keeping its meaning. May add one extra model call.' },
+    emoji: { name: 'Emoji perturbation', short: 'Emoji', group: QUESTION_GROUP,
+        description: 'Inserts emoji into the question, or encodes words and dates as emoji. The edit limit caps how many changes are made.' },
+    negation_flip: { name: 'Negation flip', short: 'Negation', group: QUESTION_GROUP,
+        description: 'Inserts or removes a "not" so the polarity of the question is flipped.' },
+    entity_substitution: { name: 'Entity substitution', short: 'Entity swap', group: QUESTION_GROUP,
+        description: 'Swaps a known entity in the question for an unrelated one.' },
+    conflict: { name: 'Conflicting context', short: 'Conflict', group: DOCUMENT_GROUP,
+        description: 'Adds a contradictory candidate document before retrieval, so it competes with the real evidence.' },
+    metadata_injection: { name: 'Metadata injection', short: 'Metadata', group: DOCUMENT_GROUP,
+        description: 'Before retrieval, tags an off-topic passage with keywords taken from the question so that it may be retrieved.' },
+    remove_evidence: { name: 'Remove supporting evidence', short: 'Remove evidence', group: DOCUMENT_GROUP,
+        description: 'After retrieval, removes passages from the context. Falls back to the highest-ranked passage.' },
+    irrelevant: { name: 'Add irrelevant passages', short: 'Irrelevant', group: DOCUMENT_GROUP,
+        description: 'After retrieval, adds passages sampled from other benchmark questions.' },
+    alter_facts: { name: 'Alter facts', short: 'Alter facts', group: DOCUMENT_GROUP,
+        description: 'After retrieval, replaces numbers and date tokens inside the passages.' },
+    shuffle: { name: 'Shuffle passage order', short: 'Shuffle', group: DOCUMENT_GROUP,
+        description: 'After retrieval, changes the order of the passages. The passage contents are preserved.' },
+    truncate: { name: 'Truncate passages', short: 'Truncate', group: DOCUMENT_GROUP,
+        description: 'After retrieval, keeps only a percentage of the text of the passages.' }
+};
+
+const selectedPerturbations = new Set(['spelling']); // spelling was ticked by default before the redesign
+const selectedRepairNames = new Set();
+let repairCatalog = [];            // [{name, description}] from the backend
+let settingValues = {};            // last confirmed value of every settings field, keyed by element id
+let detailTarget = null;           // {kind: 'perturbation' | 'repair', id} while the detail popup is open
+
 window.addEventListener('DOMContentLoaded', async () => {
+    captureSettingDefaults();
+
     // 1. Perform backend health check & update header status badge
     updateHeaderStatusBadge();
     updateEmbeddingProviderAvailability();
@@ -141,12 +181,8 @@ function bindEventListeners() {
         loadSelectedQuery();
     });
 
-    // Typo rate slider display update
-    document.getElementById('typo-rate-slider')?.addEventListener('input', (e) => {
-        document.getElementById('typo-rate-val').innerText = e.target.value + '%';
-    });
-
     document.getElementById('perturbation-controls').addEventListener('change', updatePerturbationControls);
+    bindSelectionPopups();
     document.getElementById('variant-select').addEventListener('change', event => {
         renderVariant(currentVariants[Number(event.target.value)]);
     });
@@ -170,47 +206,25 @@ function resetHistory() {
 }
 
 function selectedMethods() {
-    const checked = new Set(Array.from(document.querySelectorAll('input[name="perturbation-type"]:checked'), input => input.value));
-    return Object.keys(PERTURBATION_LABELS).filter(method => checked.has(method));
+    return Object.keys(PERTURBATION_LABELS).filter(method => selectedPerturbations.has(method));
 }
 
-// Builds one checkbox per repair registered in backend/repairs.py, so adding a fix needs no HTML changes.
-async function loadRepairOptions() {
-    const container = document.getElementById('repair-options');
-    if (!container) return;
-    const repairs = await fetchRepairOptions();
-    container.replaceChildren(...repairs.map(repair => {
-        const label = document.createElement('label');
-        label.className = 'flex items-center p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer';
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.name = 'repair-method';
-        input.value = repair.name;
-        input.className = 'accent-indigo-500';
-        input.disabled = evaluationRunning;
-        const text = document.createElement('span');
-        text.className = 'ml-2.5';
-        const title = document.createElement('span');
-        title.className = 'block text-xs font-semibold text-white';
-        title.textContent = repair.label || repair.name;
-        text.append(title);
-        if (repair.description) {
-            const description = document.createElement('span');
-            description.className = 'block text-[10px] text-slate-400';
-            description.textContent = repair.description;
-            text.append(description);
-        }
-        label.append(input, text);
-        return label;
-    }));
-    const empty = document.getElementById('repair-empty');
-    if (empty) empty.hidden = repairs.length > 0;
+function repairLabel(name) {
+    const repair = repairCatalog.find(item => item.name === name);
+    return repair?.label || name;
 }
 
 function selectedRepairs() {
-    return Array.from(document.querySelectorAll('input[name="repair-method"]:checked'), input => input.value);
+    return repairCatalog.map(repair => repair.name).filter(name => selectedRepairNames.has(name));
 }
 
+// Repairs come from backend/repairs.py, so adding one there needs no HTML change.
+async function loadRepairOptions() {
+    repairCatalog = await fetchRepairOptions();
+    const known = new Set(repairCatalog.map(repair => repair.name));
+    [...selectedRepairNames].forEach(name => { if (!known.has(name)) selectedRepairNames.delete(name); });
+    updatePerturbationControls();
+}
 
 //fills the reranker dropdown from /api/rerankers, same idea as loadRepairOptions
 async function loadRerankerOptions() {
@@ -237,16 +251,185 @@ function syncRerankerControls() {
     select.disabled = evaluationRunning || !box.checked;
 }
 
+/* ---------- popups: catalog -> detail (description + settings) ---------- */
+
+function settingInputs() {
+    return Array.from(document.querySelectorAll('[data-method-settings] input, [data-method-settings] select'));
+}
+
+// The default values written in index.html become the starting settings.
+function captureSettingDefaults() {
+    settingValues = Object.fromEntries(settingInputs().map(input => [input.id, input.value]));
+}
+
+function activePanel() {
+    return Array.from(document.querySelectorAll('[data-method-settings]')).find(panel => !panel.hidden) || null;
+}
+
+function updateEmojiPositionVisibility() {
+    const container = document.getElementById('emoji-position-container');
+    if (container) container.hidden = document.getElementById('emoji-style').value === 'substitute';
+}
+
+function chipDetail(method) {
+    const value = id => settingValues[id];
+    switch (method) {
+        case 'spelling': return `${value('typo-rate-slider')}%`;
+        case 'emoji': return `${value('emoji-style')}, ${value('emoji-count')}`;
+        case 'metadata_injection': return `${value('metadata-term-count')} keywords`;
+        case 'remove_evidence': return `-${value('remove-count')}`;
+        case 'irrelevant': return `+${value('irrelevant-count')}`;
+        case 'alter_facts': return `${value('fact-count')}`;
+        case 'truncate': return `${value('retain-percent')}%`;
+        default: return '';
+    }
+}
+
+function openPerturbationPicker() {
+    const groups = [QUESTION_GROUP, DOCUMENT_GROUP].map(label => ({
+        label,
+        items: Object.keys(PERTURBATION_LABELS)
+            .filter(method => PERTURBATION_INFO[method]?.group === label)
+            .map(method => ({
+                id: method,
+                title: PERTURBATION_INFO[method].name,
+                description: PERTURBATION_INFO[method].description,
+                selected: selectedPerturbations.has(method)
+            }))
+    }));
+    openPicker({ title: 'Add a perturbation', groups, onPick: id => openDetail('perturbation', id) });
+}
+
+function openRepairPicker() {
+    openPicker({
+        title: 'Add a repair',
+        groups: [{
+            label: 'Runs after retrieval, before the answer is generated',
+            items: repairCatalog.map(repair => ({
+                id: repair.name,
+                title: repair.label || repair.name,
+                description: repair.description,
+                selected: selectedRepairNames.has(repair.name)
+            }))
+        }],
+        onPick: id => openDetail('repair', id)
+    });
+}
+
+function openDetail(kind, id) {
+    const isPerturbation = kind === 'perturbation';
+    const info = isPerturbation ? PERTURBATION_INFO[id] : repairCatalog.find(repair => repair.name === id);
+    if (!info) return;
+    detailTarget = { kind, id };
+    const selected = isPerturbation ? selectedPerturbations.has(id) : selectedRepairNames.has(id);
+
+    document.getElementById('detail-kind').textContent = isPerturbation ? 'Perturbation' : 'Repair';
+    document.getElementById('detail-title').textContent = isPerturbation ? info.name : (info.label || info.name);
+    document.getElementById('detail-description').textContent = info.description || 'No description provided.';
+
+    // Show only this item's settings, filled with its last confirmed values.
+    let hasSettings = false;
+    document.querySelectorAll('[data-method-settings]').forEach(panel => {
+        const show = isPerturbation && panel.dataset.methodSettings === id;
+        panel.hidden = !show;
+        if (!show) return;
+        hasSettings = true;
+        panel.querySelectorAll('input, select').forEach(input => { input.value = settingValues[input.id]; });
+    });
+    document.getElementById('typo-rate-val').textContent = document.getElementById('typo-rate-slider').value + '%';
+    updateEmojiPositionVisibility();
+    document.getElementById('detail-no-settings').hidden = hasSettings;
+    document.getElementById('detail-error').hidden = true;
+    document.getElementById('detail-remove').hidden = !selected;
+    document.getElementById('detail-confirm').textContent = selected ? 'Save changes' : 'Add to selection';
+
+    closePicker();
+    const dialog = document.getElementById('detail-dialog');
+    if (!dialog.open) dialog.showModal();
+}
+
+function closeDetail() {
+    detailTarget = null;
+    const dialog = document.getElementById('detail-dialog');
+    if (dialog.open) dialog.close();
+}
+
+function confirmDetail(event) {
+    event.preventDefault();
+    if (!detailTarget) return;
+    const { kind, id } = detailTarget;
+    if (kind === 'perturbation') {
+        const panel = activePanel();
+        if (panel) {
+            const invalid = Array.from(panel.querySelectorAll('input')).find(input => !input.checkValidity());
+            if (invalid) {
+                const label = invalid.labels?.[0]?.textContent.trim() || invalid.id;
+                const error = document.getElementById('detail-error');
+                error.textContent = `${label}: ${invalid.validationMessage}`;
+                error.hidden = false;
+                invalid.reportValidity();
+                return;
+            }
+            panel.querySelectorAll('input, select').forEach(input => { settingValues[input.id] = input.value; });
+        }
+        selectedPerturbations.add(id);
+    } else {
+        selectedRepairNames.add(id);
+    }
+    closeDetail();
+    updatePerturbationControls();
+}
+
+function removeSelection(kind, id) {
+    (kind === 'perturbation' ? selectedPerturbations : selectedRepairNames).delete(id);
+    updatePerturbationControls();
+}
+
+function bindSelectionPopups() {
+    document.getElementById('add-perturbation-btn')?.addEventListener('click', openPerturbationPicker);
+    document.getElementById('add-repair-btn')?.addEventListener('click', openRepairPicker);
+    document.getElementById('picker-close')?.addEventListener('click', closePicker);
+    document.getElementById('detail-back')?.addEventListener('click', closeDetail);
+    document.getElementById('detail-form')?.addEventListener('submit', confirmDetail);
+    document.getElementById('detail-remove')?.addEventListener('click', () => {
+        if (!detailTarget) return;
+        const { kind, id } = detailTarget;
+        closeDetail();
+        removeSelection(kind, id);
+    });
+    document.getElementById('typo-rate-slider')?.addEventListener('input', event => {
+        document.getElementById('typo-rate-val').textContent = event.target.value + '%';
+    });
+    document.getElementById('emoji-style')?.addEventListener('change', updateEmojiPositionVisibility);
+    // Clicking the dark backdrop closes a popup (the card fills the dialog, so only the backdrop hits the dialog itself).
+    ['picker-dialog', 'detail-dialog'].forEach(id => {
+        const dialog = document.getElementById(id);
+        dialog?.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    });
+    document.getElementById('detail-dialog')?.addEventListener('close', () => { detailTarget = null; });
+}
+
 function updatePerturbationControls() {
     const methods = selectedMethods();
+    const repairs = selectedRepairs();
     const separate = document.getElementById('evaluation-mode').value === 'separate';
-    document.querySelectorAll('[data-method-settings]').forEach(panel => {
-        panel.hidden = !methods.includes(panel.dataset.methodSettings);
-        panel.querySelectorAll('input, select').forEach(input => { input.disabled = panel.hidden || evaluationRunning; });
-    });
-    const emojiInsertion = methods.includes('emoji') && document.getElementById('emoji-style').value !== 'substitute';
-    document.getElementById('emoji-position-container').hidden = !emojiInsertion;
-    document.getElementById('emoji-position').disabled = !emojiInsertion || evaluationRunning;
+
+    renderChips('perturbation-chips', 'perturbation-empty',
+        methods.map(method => {
+            const detail = chipDetail(method);
+            return { id: method, label: detail ? `${PERTURBATION_INFO[method].short} (${detail})` : PERTURBATION_INFO[method].short,
+                title: `Edit ${PERTURBATION_INFO[method].name}` };
+        }),
+        { disabled: evaluationRunning, onEdit: id => openDetail('perturbation', id), onRemove: id => removeSelection('perturbation', id) });
+    renderChips('repair-chips', 'repair-empty',
+        repairs.map(name => { const label = repairLabel(name); return { id: name, label, title: `Edit ${label}` }; }),
+        { disabled: evaluationRunning, onEdit: id => openDetail('repair', id), onRemove: id => removeSelection('repair', id) });
+    // Nothing to add when the backend registers no repairs.
+    const addRepair = document.getElementById('add-repair-btn');
+    addRepair.disabled = evaluationRunning || !repairCatalog.length;
+    addRepair.title = repairCatalog.length ? '' : 'No repairs registered yet. Add one in backend/repairs.py and it appears here.';
+    document.getElementById('add-perturbation-btn').disabled = evaluationRunning;
+
     document.getElementById('perturbation-order').textContent = separate
         ? 'Each selected method starts independently from the clean input.'
         : `Application order: ${methodLabel(methods).replaceAll(' + ', ' -> ') || 'Select at least one method'}`;
@@ -257,18 +440,34 @@ function updatePerturbationControls() {
     document.getElementById('run-pipeline-btn').disabled = evaluationRunning || !methods.length;
 }
 
+// Settings sent to the backend: same keys as before the redesign, only for the selected methods.
+function buildMethodSettings(methods) {
+    const number = id => Number(settingValues[id]);
+    return {
+        ...Object.fromEntries([
+            ['remove_evidence', 'remove_count', 'remove-count'],
+            ['irrelevant', 'irrelevant_count', 'irrelevant-count'],
+            ['alter_facts', 'fact_count', 'fact-count'],
+            ['truncate', 'retain_percent', 'retain-percent']
+        ].filter(([method]) => methods.includes(method)).map(([, key, id]) => [key, number(id)])),
+        ...(methods.includes('emoji') ? {
+            emoji_style: settingValues['emoji-style'],
+            emoji_count: number('emoji-count'),
+            emoji_position: settingValues['emoji-position']
+        } : {}),
+        ...(methods.includes('metadata_injection') ? {
+            metadata_term_count: number('metadata-term-count')
+        } : {})
+    };
+}
+
 function generationLabel(source) {
     return source === 'synthetic' ? 'Synthetic / scripted output' : source || 'Unknown';
 }
 
-function validateEvaluationInputs(methods) {
-    // Only selected methods contribute required fields. Either group can run alone.
+function validateEvaluationInputs() {
+    // Method settings were validated when they were confirmed in their popup; only the shared fields remain.
     const inputs = [document.getElementById('top-k'), document.getElementById('perturbation-seed')];
-    document.querySelectorAll('[data-method-settings]').forEach(panel => {
-        if (methods.includes(panel.dataset.methodSettings)) {
-            inputs.push(...panel.querySelectorAll('input[type="number"]'));
-        }
-    });
     const invalid = inputs.find(input => !input.checkValidity());
     if (!invalid) return true;
     const label = invalid.labels?.[0]?.textContent.trim() || (invalid.id === 'top-k' ? 'Top K' : invalid.id);
@@ -349,7 +548,7 @@ export async function executeEvaluation() {
     updatePerturbationControls();
     const methods = selectedMethods();
     if (!methods.length) return;
-    if (!validateEvaluationInputs(methods)) return;
+    if (!validateEvaluationInputs()) return;
 
     evaluationRunning = true;
     document.querySelectorAll('aside input, aside select, aside button').forEach(input => { input.disabled = true; });
@@ -379,23 +578,9 @@ export async function executeEvaluation() {
             perturbationTypes: methods,
             repairMethods: selectedRepairs(),
             mode: document.getElementById('evaluation-mode').value,
-            settings: {...Object.fromEntries([
-                ['remove_evidence', 'remove_count', 'remove-count'],
-                ['irrelevant', 'irrelevant_count', 'irrelevant-count'],
-                ['alter_facts', 'fact_count', 'fact-count'],
-                ['truncate', 'retain_percent', 'retain-percent']
-            ].filter(([method]) => methods.includes(method)).map(([, key, id]) => [key, Number(document.getElementById(id).value)])),
-                ...(methods.includes('emoji') ? {
-                    emoji_style: document.getElementById('emoji-style').value,
-                    emoji_count: Number(document.getElementById('emoji-count').value),
-                    emoji_position: document.getElementById('emoji-position').value
-                } : {}),
-                ...(methods.includes('metadata_injection') ? {
-                    metadata_term_count: Number(document.getElementById('metadata-term-count').value)
-                } : {})
-            },
+            settings: buildMethodSettings(methods),
             seed: seedText === '' ? null : Number(seedText),
-            typoRate: Number(document.getElementById('typo-rate-slider').value) / 100,
+            typoRate: Number(settingValues['typo-rate-slider']) / 100,
             embeddingProvider: document.getElementById('embedding-provider').value,
             searchType: document.getElementById('search-type').value,
             topK: Number(document.getElementById('top-k').value),
