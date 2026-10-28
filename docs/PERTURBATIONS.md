@@ -13,14 +13,17 @@ answer, metrics, warnings, and changes.
 | `spelling` | Before retrieval | `typo_rate`: 0–1, default 0.25 | Existing random character swaps, deletions, and substitutions; 0 preserves the question exactly. |
 | `rephrase` | Before retrieval | On/off | Existing model rephrase with a labelled rule-based fallback. |
 | `emoji` | Before retrieval | `emoji_style`, `emoji_count`, `emoji_position` | Insert emojis or encode words/numbers/dates using emoji, letters, and digits; record each insertion and replacement. |
-| `conflict` | Before retrieval | On/off | Existing contradictory candidate document; retrieval may or may not select it. |
+| `negation_flip` | Before retrieval | On/off | Flips the question's polarity: removes an existing negation (`not`, `n't`), or inserts `not` after the first auxiliary verb (is, was, did, can, ...). Skipped if the question has neither. |
+| `entity_substitution` | Before retrieval | On/off | Replaces one named entity in the question (a known candidate-document title, chosen with the seed) with the title of an unrelated benchmark question. Records the original and replacement entity. Skipped if no entity is found. |
+| `metadata_injection` | Before retrieval | `metadata_term_count`: 1–10, default 4 | Adds one off-topic passage to the candidates with query-derived topic keywords prepended, so it ranks highly without containing the answer (see below). |
+| `conflict` | Before retrieval | On/off | Adds a synthetic contradictory candidate document that asserts a wrong answer and carries a high score; retrieval may or may not select it. |
 | `remove_evidence` | After retrieval | `remove_count`: 1–5, default 1 | Remove retrieved supporting passages if annotations exist; otherwise remove the highest-ranked passages and explicitly label the fallback. |
 | `alter_facts` | After retrieval | `fact_count`: 1–20, default 1 | Replace sampled integer tokens, including years and date components, with a different integer. Record each old/new value and its position. Names and decimal values are not edited. |
 | `truncate` | After retrieval | `retain_percent`: 1–100, default 50 | Keep a prefix of each passage up to this percentage of its characters, ending at a word boundary. A short passage can become empty. |
 | `irrelevant` | After retrieval | `irrelevant_count`: 1–5, default 1 | Append sampled passages from other benchmark questions, excluding original candidate titles/text and duplicate distractors. Irrelevance is not guaranteed. |
 | `shuffle` | After retrieval | On/off | Change passage order without editing text. Fewer than two distinct passages produces a reported no-op. |
 
-The five new methods modify only the context supplied to generation. They do not
+The five post-retrieval methods (`remove_evidence`, `alter_facts`, `truncate`, `irrelevant`, `shuffle`) modify only the context supplied to generation. They do not
 rebuild the persisted database or change retrieval algorithms. Edited passages
 have no relevance score attached: their original retrieval score remains available
 in the separately recorded retrieval output.
@@ -41,7 +44,8 @@ an applied/skipped record. Removing all passages is allowed and visible.
 Combined execution always follows this order, regardless of checkbox order:
 
 ```text
-Rephrase -> spelling -> emoji -> conflicting candidate -> retrieve
+Rephrase -> spelling -> emoji -> negation flip -> entity substitution
+-> metadata injection -> conflicting candidate -> retrieve -> [rerank, if enabled]
 -> remove evidence -> alter facts -> truncate -> add distractors -> shuffle
 -> generate answer
 ```
@@ -57,9 +61,42 @@ own random stream. The same seed and same inputs reproduce its random choices;
 earlier combined methods may change those inputs. Seeds do not control model
 responses, embeddings, or external services.
 
+## Negation flip, entity substitution, and metadata injection
+
+These three pre-retrieval methods were added after the original nine. Together with the
+original methods there are **12** perturbations: seven before retrieval (`rephrase`,
+`spelling`, `emoji`, `negation_flip`, `entity_substitution`, `metadata_injection`,
+`conflict`) and five after (`remove_evidence`, `alter_facts`, `truncate`, `irrelevant`,
+`shuffle`).
+
+**Negation flip** changes only the question text. It removes the first `not` or `n't`
+if one exists; otherwise it inserts `not` after the first auxiliary verb. The change
+record shows whether the question was flipped. Questions with no negation and no
+auxiliary verb are reported as skipped. The flipped question may be ungrammatical or
+no longer answerable; the ground truth is not changed.
+
+**Entity substitution** looks for a candidate-document title that appears in the
+question and swaps the first occurrence for the title of a document from another
+benchmark question. The choice of entity and replacement is seeded. The change record
+lists the original and replacement entity. If no title appears in the question, the
+method is reported as skipped. The question then names an entity that the retrieved documents do not describe, so a
+correct answer may come from the model's own knowledge instead of the context.
+
+**Metadata injection** targets the retrieval stage. It picks one off-topic passage from
+another benchmark question (preferring ones that share words with the query, then
+choosing randomly among the top five using the seed), keeps its first sentence, and
+prepends topic tags built from the question's most salient terms
+(`metadata_term_count`, default 4). The passage is added to the candidates with the
+title `Synthetic_MetadataBoosted: ...`. It contains no real answer content, so if it
+reaches the model the answer can only be harmed. The change record lists the terms and
+the source passage. The method is skipped when no salient terms or no distinct
+distractor passages are available. This perturbation probes retrieval and reranking:
+keyword-stuffed passages can outrank the real evidence, and the `contradiction_filter`
+repair is designed to detect them.
+
 ## Emoji words, numbers, and dates
 
-Emoji perturbation is the ninth method. It modifies the question before retrieval
+Emoji perturbation modifies the question before retrieval
 and works in combined or separate mode. In combined mode it runs after spelling
 errors so the typo method cannot split a newly generated emoji sequence.
 
@@ -141,8 +178,8 @@ selected benchmark's documents and ground truth.
 ## API
 
 `POST /api/run-evaluation` continues to accept the old `perturbation_type` field.
-It now also accepts `perturbation_types`, `mode`, `settings`, `seed`, and optional
-`supporting_titles`. When a list is supplied it takes precedence over the legacy
+It now also accepts `perturbation_types` (up to 12 methods), `mode`, `settings`, `seed`,
+and optional `supporting_titles`. When a list is supplied it takes precedence over the legacy
 field. Duplicate selections are collapsed into the fixed application order.
 
 Example request (replace the documents and ground truth for your experiment):
@@ -176,6 +213,23 @@ the actual baseline/variant being processed; `complete.result` contains the same
 response as the regular endpoint. Validation errors return HTTP 422. Failures
 after streaming starts produce an `error` event without a completion event.
 
+### Repairs, reranker, and judge fields
+
+The same request can also include:
+
+| Field | Meaning |
+|---|---|
+| `repair_methods` | Registered repair methods to apply (see `GET /api/repairs`). Query repairs such as `fix_spelling` run before retrieval; the others run on the retrieved context before generation. |
+| `use_reranker` | `true` adds a cross-encoder reranking stage after retrieval. Default `false`, so older runs behave as before. |
+| `rerank_fetch_k` | Candidates the retriever fetches before the reranker keeps `top_k` (1–20, default 10). |
+| `reranker_model` | One of `GET /api/rerankers`: `cross-encoder/ms-marco-MiniLM-L-6-v2`, `BAAI/bge-reranker-base` (default), `BAAI/bge-reranker-v2-m3`. Unknown names return HTTP 422. |
+| `use_llm_judge` / `judge_model` | Enables LLM-as-judge scoring (correctness, faithfulness, context relevance) with a model from `GET /api/judges`. |
+
+When the reranker is on, the failure-localisation swap test can blame the `RERANKING`
+stage: it does so when the retriever's own top-`k` would have produced a correct answer.
+Each run's reranker settings and pool sizes are logged in the `rerank_stage` record of
+`backend/stage_run_logs.jsonl`.
+
 ## History, exports, and validation
 
 The browser keeps the existing localStorage key and can load older records.
@@ -189,6 +243,12 @@ Run focused offline tests from the project root:
 
 ```powershell
 python -m unittest discover -s tests -v
+```
+
+or, with pytest installed:
+
+```powershell
+python -m pytest tests -v
 ```
 
 Tests isolate model loading and external generation, exercise actual perturbations
